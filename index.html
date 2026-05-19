@@ -653,7 +653,7 @@
         <div class="modal-section">
           <h3>2. リポジトリ（所有者/リポジトリ名）</h3>
           <p>事前に作成したプライベートリポジトリ。</p>
-          <input type="text" id="ghRepo" placeholder="例：yukaiya/reply-data">
+          <input type="text" id="ghRepo" placeholder="例：yukaiya/reply-data" value="kaiyoshida0318/yukaiya-reply-data">
         </div>
         
         <div class="modal-section">
@@ -960,8 +960,9 @@
     document.getElementById('customInstructions').value = SETTINGS.instructions || '';
     document.getElementById('userName').value = await localGet('user:name') || '';
     document.getElementById('ghToken').value = GH.token;
-    document.getElementById('ghRepo').value = GH.repo;
-    document.getElementById('ghBranch').value = GH.branch || 'main';
+    // リポジトリとブランチは、保存値があればそれを、なければHTMLのデフォルト値を維持
+    if (GH.repo) document.getElementById('ghRepo').value = GH.repo;
+    if (GH.branch) document.getElementById('ghBranch').value = GH.branch;
   }
   
   async function saveSettings() {
