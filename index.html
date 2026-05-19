@@ -46,13 +46,12 @@
   .logo-wrap { display: flex; align-items: center; gap: 12px; }
   .logo-icon {
     width: 42px; height: 42px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    flex-shrink: 0;
   }
+  .logo-icon svg { width: 100%; height: 100%; }
   .logo-text {
     font-size: 22px;
     font-weight: 700;
@@ -517,7 +516,14 @@
   
   <header>
     <div class="logo-wrap">
-      <div class="logo-icon">💌</div>
+      <div class="logo-icon">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- 封筒本体 -->
+          <rect x="15" y="30" width="70" height="50" rx="4" fill="#e07856" stroke="#c8553d" stroke-width="2"/>
+          <!-- 封筒のフタ -->
+          <path d="M 15 32 L 50 58 L 85 32" stroke="#c8553d" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <div>
         <div class="logo-text">返信ちゃん</div>
         <small>ゆかい屋 顧客対応AIアシスタント</small>
@@ -676,29 +682,6 @@
         <div class="history-list" id="historyList"></div>
       </div>
       
-    </div>
-  </div>
-</div>
-
-<!-- 初回セットアップガイド -->
-<div class="setup-overlay" id="setupOverlay">
-  <div class="setup-modal">
-    <h2>💌 返信ちゃんへようこそ</h2>
-    <p>このツールはGitHubでデータを共有して、複数のPCで同じ履歴を見られるようにします。<br>
-    最初に管理者から共有された情報を入力してください。</p>
-    
-    <div class="info-box">
-      <strong>準備するもの（管理者から受け取る）：</strong>
-      <ol>
-        <li>GitHub Personal Access Token（<code>ghp_...</code>）</li>
-        <li>リポジトリ名（例：<code>yukaiya/reply-data</code>）</li>
-      </ol>
-      <p style="color: inherit; margin-top: 8px; margin-bottom: 0;">※まだ準備していない場合：「あとで設定」を押せば、まずローカル保存で使い始められます。</p>
-    </div>
-    
-    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
-      <button class="btn btn-secondary" onclick="skipSetup()">あとで設定</button>
-      <button class="btn btn-primary" onclick="goToSetup()">設定する</button>
     </div>
   </div>
 </div>
@@ -1457,20 +1440,6 @@ ${customerEmail}
   }
   
   // ========================================
-  // 初回セットアップ
-  // ========================================
-  
-  function skipSetup() {
-    document.getElementById('setupOverlay').classList.remove('show');
-    localSet('setup:dismissed', '1');
-  }
-  
-  function goToSetup() {
-    document.getElementById('setupOverlay').classList.remove('show');
-    openModal('github');
-  }
-  
-  // ========================================
   // 自動同期（30秒ごと）
   // ========================================
   
@@ -1517,13 +1486,7 @@ ${customerEmail}
       if (localSet_) {
         try { SETTINGS = JSON.parse(localSet_); } catch(e) {}
       }
-      
-      const dismissed = await localGet('setup:dismissed');
-      if (!dismissed) {
-        document.getElementById('setupOverlay').classList.add('show');
-      } else {
-        setSyncStatus('local', 'ローカルのみ');
-      }
+      setSyncStatus('local', 'ローカルのみ');
     }
     updateStats();
   }
