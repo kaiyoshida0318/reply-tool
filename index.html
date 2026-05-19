@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>返信ちゃん | ゆかい屋</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #faf7f2;
+    --panel: #ffffff;
+    --border: #e8e3da;
+    --text: #2a2825;
+    --text-soft: #7a766e;
+    --accent: #e07856;
+    --accent-deep: #c8553d;
+    --accent-soft: #fbeae3;
+    --success: #6b9450;
+    --warning: #d4a017;
+    --star: #f0a830;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  }
+  body {
+    font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  .container { max-width: 1600px; margin: 0 auto; }
+  
+  header {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 24px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent-deep);
+  }
+  .logo-text small {
+    font-size: 11px;
+    color: var(--text-soft);
+    font-weight: 500;
+    display: block;
+    letter-spacing: 0;
+  }
+  .stats {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text-soft);
+    align-items: center;
+  }
+  .stat-item strong {
+    color: var(--accent-deep);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .sync-status.connected { background: #e3f0d4; color: var(--success); }
+  .sync-status.disconnected { background: #fde2dd; color: #b04632; }
+  .sync-status.syncing { background: var(--accent-soft); color: var(--accent-deep); }
+  .sync-status.local { background: #fbf2d4; color: #8a6c0e; }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .sync-dot.pulse { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  
+  .header-actions { display: flex; gap: 8px; }
+  
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+  }
+  
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::before {
+    content: '';
+    width: 4px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .panel-body {
+    flex: 1;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  textarea {
+    width: 100%;
+    flex: 1;
+    min-height: 320px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+    background: #fdfcfa;
+    color: var(--text);
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #ffffff;
+  }
+  
+  .meta-field { display: flex; flex-direction: column; gap: 4px; }
+  .meta-field label {
+    font-size: 11px;
+    color: var(--text-soft);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .meta-field input, .meta-field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fdfcfa;
+  }
+  .meta-field input:focus, .meta-field select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  
+  .btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--accent-deep); color: white; }
+  .btn-primary:hover:not(:disabled) { background: #a83d28; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #f5f3ee; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #557a3f; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  
+  .actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+  }
+  .badge-success { background: #e3f0d4; color: var(--success); }
+  .badge-warning { background: #fbf2d4; color: #8a6c0e; }
+  .badge-neutral { background: #ebe9e3; color: var(--text-soft); }
+  .badge-category { background: #dde9f5; color: #3a5a85; }
+  
+  .status-bar {
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-bar.show { display: flex; }
+  .status-loading { background: var(--accent-soft); color: var(--accent-deep); }
+  .status-success { background: #e3f0d4; color: var(--success); }
+  .status-error { background: #fde2dd; color: #b04632; }
+  
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 10px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h2 { font-size: 18px; }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-soft);
+    line-height: 1;
+  }
+  .modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    overflow-x: auto;
+  }
+  .modal-tab {
+    padding: 12px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-soft);
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .modal-tab.active {
+    color: var(--accent-deep);
+    border-bottom-color: var(--accent-deep);
+  }
+  .modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section h3 { font-size: 14px; margin-bottom: 8px; }
+  .modal-section p { font-size: 13px; color: var(--text-soft); margin-bottom: 8px; }
+  .modal-section textarea { min-height: 120px; }
+  .modal-section input[type="text"], .modal-section input[type="password"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fdfcfa;
+  }
+  .modal-section input:focus { outline: none; border-color: var(--accent); }
+  
+  .info-box {
+    background: #f0f6fb;
+    border: 1px solid #c8dbed;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #3a5a85;
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  .info-box strong { color: #2c4669; }
+  .info-box ol { margin: 8px 0 0 20px; }
+  .info-box code {
+    background: #d6e4f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+  }
+  
+  .history-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .history-toolbar input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .history-toolbar select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    background: white;
+  }
+  
+  .history-list { display: flex; flex-direction: column; gap: 10px; }
+  .history-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .history-item.starred {
+    border-color: var(--star);
+    background: #fffaef;
+  }
+  .history-head {
+    padding: 10px 14px;
+    background: #faf9f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    gap: 8px;
+  }
+  .history-item.starred .history-head { background: #fff5e0; }
+  .history-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-soft);
+    flex: 1;
+    min-width: 0;
+  }
+  .history-meta .preview {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .history-meta .author {
+    color: var(--text-soft);
+    font-size: 11px;
+  }
+  .history-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-soft);
+  }
+  .icon-btn:hover { background: white; color: var(--text); }
+  .icon-btn.starred { color: var(--star); border-color: var(--star); background: #fff5e0; }
+  .history-body {
+    display: none;
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    background: white;
+  }
+  .history-body.show { display: block; }
+  .history-section { margin-bottom: 12px; }
+  .history-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .history-section-text {
+    font-size: 13px;
+    white-space: pre-wrap;
+    background: #faf9f6;
+    padding: 10px;
+    border-radius: 4px;
+    line-height: 1.6;
+  }
+  
+  .empty {
+    color: var(--text-soft);
+    font-size: 13px;
+    font-style: italic;
+    padding: 30px 20px;
+    text-align: center;
+    background: #faf9f6;
+    border-radius: 6px;
+  }
+  
+  .footer-note {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-soft);
+    text-align: center;
+  }
+  
+  .ref-info {
+    background: #f0f6fb;
+    border: 1px solid #c8dbed;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #3a5a85;
+    display: none;
+  }
+  .ref-info.show { display: block; }
+  
+  .setup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+  }
+  .setup-overlay.show { display: flex; }
+  .setup-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    padding: 28px;
+  }
+  .setup-modal h2 {
+    font-size: 20px;
+    margin-bottom: 12px;
+    color: var(--accent-deep);
+  }
+  .setup-modal p {
+    font-size: 14px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+    line-height: 1.7;
+  }
+  
+  @media (max-width: 1024px) {
+    .workspace { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  
+  <header>
+    <div class="logo-wrap">
+      <div class="logo-icon">💌</div>
+      <div>
+        <div class="logo-text">返信ちゃん</div>
+        <small>ゆかい屋 顧客対応AIアシスタント</small>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat-item">📚 履歴 <strong id="statHistory">0</strong></div>
+      <div class="stat-item">⭐ お手本 <strong id="statStarred">0</strong></div>
+      <div class="sync-status disconnected" id="syncStatus">
+        <span class="sync-dot"></span>
+        <span id="syncStatusText">未接続</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn">🔄 同期</button>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('history')">📚 履歴</button>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('settings')">⚙ 設定</button>
+    </div>
+  </header>
+  
+  <div class="workspace">
+    
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">お客様からのメール</div>
+        <button class="btn btn-secondary btn-sm" onclick="clearInput()">クリア</button>
+      </div>
+      <div class="panel-body">
+        <textarea id="customerEmail" placeholder="メールワイズから受信したお客様のメールをここに貼り付けてください..."></textarea>
+        
+        <div class="meta-field">
+          <label>追加メモ（任意）</label>
+          <input type="text" id="extraNotes" placeholder="例：再送済み、返金対応中など、状況メモ">
+        </div>
+        
+        <button class="btn btn-primary" onclick="generateReply()" id="generateBtn" style="justify-content: center;">
+          ✨ AIで返信を生成
+        </button>
+      </div>
+    </div>
+    
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">AI生成・編集エリア</div>
+        <div class="badges" id="badges"></div>
+      </div>
+      <div class="panel-body">
+        <div class="status-bar" id="statusBar"></div>
+        <div class="ref-info" id="refInfo"></div>
+        
+        <textarea id="aiReply" placeholder="「AIで返信を生成」を押すと、ここに返信文が表示されます。そのまま編集できます。"></textarea>
+        
+        <div class="actions-row">
+          <button class="btn btn-secondary btn-sm" onclick="regenerateReply()" id="regenBtn" disabled>
+            🔄 再生成
+          </button>
+          <button class="btn btn-success" onclick="copyAndSave()" id="copyBtn" disabled>
+            📋 OK・コピー（履歴に保存）
+          </button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="footer-note">
+    💡 OKボタンで自動的にGitHubに保存され、全員のツールに同期されます。
+  </div>
+  
+</div>
+
+<!-- メイン設定モーダル -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">設定</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab" data-tab="settings" onclick="switchTab('settings')">⚙ 基本設定</button>
+      <button class="modal-tab" data-tab="github" onclick="switchTab('github')">🔗 GitHub接続</button>
+      <button class="modal-tab" data-tab="history" onclick="switchTab('history')">📚 履歴</button>
+    </div>
+    <div class="modal-body">
+      
+      <div id="tab-settings">
+        <div class="modal-section">
+          <h3>表示名（あなたの名前）</h3>
+          <p>履歴に誰が対応したかを記録するため、あなたの名前を入力してください。</p>
+          <input type="text" id="userName" placeholder="例：田中">
+        </div>
+        
+        <div class="modal-section">
+          <h3>店舗情報・署名</h3>
+          <p>返信の末尾に自動でつく署名・店舗名を設定します（全員で共通）。</p>
+          <textarea id="signatureText" placeholder="例：
+ゆかい屋 カスタマーサポート
+営業時間：平日 10:00-17:00
+※楽天市場店舗"></textarea>
+        </div>
+        
+        <div class="modal-section">
+          <h3>AIへの追加指示（任意・全員共通）</h3>
+          <p>「絵文字は使わない」「敬語を強めに」など、全体的なルールがあれば。</p>
+          <textarea id="customInstructions" style="min-height: 80px;" placeholder="例：絵文字は使わない。一文を短めに。「申し訳ございません」を多用しない。"></textarea>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
+          <button class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+        </div>
+      </div>
+      
+      <div id="tab-github" style="display:none;">
+        <div class="info-box">
+          <strong>📘 GitHubでデータを共有する仕組み</strong>
+          <p style="color: inherit; margin-top: 6px;">プライベートリポジトリにデータが保存され、設定したPC全員でリアルタイム共有されます。同時編集にも対応。</p>
+        </div>
+        
+        <div class="modal-section">
+          <h3>1. GitHub Personal Access Token</h3>
+          <p>GitHubの個人アクセストークン。スコープは <code>repo</code> が必要。<br>
+          発行先：<a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color: var(--accent-deep);">GitHub設定 → Tokens (fine-grained)</a></p>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxx">
+        </div>
+        
+        <div class="modal-section">
+          <h3>2. リポジトリ（所有者/リポジトリ名）</h3>
+          <p>事前に作成したプライベートリポジトリ。</p>
+          <input type="text" id="ghRepo" placeholder="例：yukaiya/reply-data">
+        </div>
+        
+        <div class="modal-section">
+          <h3>3. ブランチ名（通常はmain）</h3>
+          <input type="text" id="ghBranch" placeholder="main" value="main">
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
+          <button class="btn btn-secondary" onclick="testGitHub()">🔍 接続テスト</button>
+          <button class="btn btn-primary" onclick="saveGitHubSettings()">保存して接続</button>
+        </div>
+      </div>
+      
+      <div id="tab-history" style="display:none;">
+        <div class="history-toolbar">
+          <input type="text" id="searchInput" placeholder="🔍 検索（メール本文・カテゴリ）" oninput="renderHistory()">
+          <select id="filterCategory" onchange="renderHistory()">
+            <option value="">すべてのカテゴリ</option>
+          </select>
+          <select id="filterStar" onchange="renderHistory()">
+            <option value="">すべて</option>
+            <option value="starred">⭐ お手本のみ</option>
+          </select>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- 初回セットアップガイド -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-modal">
+    <h2>💌 返信ちゃんへようこそ</h2>
+    <p>このツールはGitHubでデータを共有して、複数のPCで同じ履歴を見られるようにします。<br>
+    最初に管理者から共有された情報を入力してください。</p>
+    
+    <div class="info-box">
+      <strong>準備するもの（管理者から受け取る）：</strong>
+      <ol>
+        <li>GitHub Personal Access Token（<code>ghp_...</code>）</li>
+        <li>リポジトリ名（例：<code>yukaiya/reply-data</code>）</li>
+      </ol>
+      <p style="color: inherit; margin-top: 8px; margin-bottom: 0;">※まだ準備していない場合：「あとで設定」を押せば、まずローカル保存で使い始められます。</p>
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
+      <button class="btn btn-secondary" onclick="skipSetup()">あとで設定</button>
+      <button class="btn btn-primary" onclick="goToSetup()">設定する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ========================================
+  // ローカルストレージ（ブラウザ内・キャッシュ用）
+  // ========================================
+  
+  async function localGet(key) {
+    try {
+      const r = await window.storage.get(key);
+      return r ? r.value : null;
+    } catch(e) { return null; }
+  }
+  async function localSet(key, value) {
+    try { await window.storage.set(key, value); } catch(e) {}
+  }
+  async function localDelete(key) {
+    try { await window.storage.delete(key); } catch(e) {}
+  }
+  
+  // ========================================
+  // GitHub API
+  // ========================================
+  
+  const GH = {
+    token: '',
+    repo: '',
+    branch: 'main',
+    historyPath: 'data/history.json',
+    settingsPath: 'data/settings.json',
+    historySha: null,
+    settingsSha: null,
+    connected: false
+  };
+  
+  async function loadGitHubConfig() {
+    GH.token = await localGet('gh:token') || '';
+    GH.repo = await localGet('gh:repo') || '';
+    GH.branch = await localGet('gh:branch') || 'main';
+    return GH.token && GH.repo;
+  }
+  
+  async function ghFetch(path, options = {}) {
+    const url = `https://api.github.com/repos/${GH.repo}/contents/${path}?ref=${GH.branch}`;
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${GH.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+  }
+  
+  // Base64 (UTF-8対応)
+  function utf8ToBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function base64ToUtf8(b64) {
+    return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+  }
+  
+  // ファイル取得（無ければnull, shaも返す）
+  async function ghGetFile(path) {
+    try {
+      const res = await ghFetch(path);
+      if (res.status === 404) return { content: null, sha: null };
+      if (!res.ok) throw new Error(`GitHub取得失敗: ${res.status}`);
+      const data = await res.json();
+      const content = base64ToUtf8(data.content);
+      return { content, sha: data.sha };
+    } catch(e) {
+      console.error(e);
+      throw e;
+    }
+  }
+  
+  // ファイル書き込み（衝突時リトライ込み）
+  async function ghPutFile(path, content, sha, message) {
+    const body = {
+      message: message || `Update ${path}`,
+      content: utf8ToBase64(content),
+      branch: GH.branch
+    };
+    if (sha) body.sha = sha;
+    
+    const url = `https://api.github.com/repos/${GH.repo}/contents/${path}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${GH.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    
+    if (res.status === 409 || res.status === 422) {
+      // 衝突 - 呼び出し側でリトライ
+      const err = new Error('衝突');
+      err.conflict = true;
+      throw err;
+    }
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(`GitHub書き込み失敗 (${res.status}): ${errData.message || ''}`);
+    }
+    const data = await res.json();
+    return data.content.sha;
+  }
+  
+  async function testGitHubConnection(token, repo, branch) {
+    const url = `https://api.github.com/repos/${repo}`;
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    if (!res.ok) throw new Error(`接続失敗: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return data;
+  }
+  
+  // ========================================
+  // データ同期
+  // ========================================
+  
+  // メモリ上のデータ（GitHubから読み込んだもの）
+  let HISTORY = [];
+  let SETTINGS = {
+    signature: '',
+    instructions: ''
+  };
+  
+  function setSyncStatus(state, text) {
+    const el = document.getElementById('syncStatus');
+    const txt = document.getElementById('syncStatusText');
+    el.className = 'sync-status ' + state;
+    txt.textContent = text;
+    const dot = el.querySelector('.sync-dot');
+    dot.classList.toggle('pulse', state === 'syncing');
+  }
+  
+  async function syncFromGitHub() {
+    if (!GH.token || !GH.repo) {
+      setSyncStatus('local', 'ローカルのみ');
+      return false;
+    }
+    
+    setSyncStatus('syncing', '同期中...');
+    
+    try {
+      // 履歴の取得
+      const historyResult = await ghGetFile(GH.historyPath);
+      if (historyResult.content) {
+        HISTORY = JSON.parse(historyResult.content);
+        GH.historySha = historyResult.sha;
+      } else {
+        HISTORY = [];
+        GH.historySha = null;
+      }
+      
+      // 設定の取得
+      const settingsResult = await ghGetFile(GH.settingsPath);
+      if (settingsResult.content) {
+        SETTINGS = JSON.parse(settingsResult.content);
+        GH.settingsSha = settingsResult.sha;
+      } else {
+        SETTINGS = { signature: '', instructions: '' };
+        GH.settingsSha = null;
+      }
+      
+      GH.connected = true;
+      setSyncStatus('connected', '接続中');
+      updateStats();
+      return true;
+      
+    } catch(e) {
+      console.error(e);
+      GH.connected = false;
+      setSyncStatus('disconnected', '接続エラー');
+      showStatus('GitHub同期エラー: ' + e.message, 'error');
+      return false;
+    }
+  }
+  
+  async function pushHistoryToGitHub() {
+    if (!GH.connected) return false;
+    
+    // リトライ（最大3回）
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = JSON.stringify(HISTORY, null, 2);
+        const newSha = await ghPutFile(GH.historyPath, content, GH.historySha, `履歴更新 (${HISTORY.length}件)`);
+        GH.historySha = newSha;
+        return true;
+      } catch(e) {
+        if (e.conflict && attempt < 2) {
+          // 衝突発生 → 最新を取得してマージ
+          setSyncStatus('syncing', '同期中（衝突解決）...');
+          const result = await ghGetFile(GH.historyPath);
+          if (result.content) {
+            const remoteHistory = JSON.parse(result.content);
+            // マージ：自分のローカル履歴と、リモートを統合（id重複はリモート優先）
+            const remoteIds = new Set(remoteHistory.map(h => h.id));
+            const localOnly = HISTORY.filter(h => !remoteIds.has(h.id));
+            HISTORY = [...remoteHistory, ...localOnly].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            GH.historySha = result.sha;
+          }
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+  
+  async function pushSettingsToGitHub() {
+    if (!GH.connected) return false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = JSON.stringify(SETTINGS, null, 2);
+        const newSha = await ghPutFile(GH.settingsPath, content, GH.settingsSha, '設定更新');
+        GH.settingsSha = newSha;
+        return true;
+      } catch(e) {
+        if (e.conflict && attempt < 2) {
+          const result = await ghGetFile(GH.settingsPath);
+          if (result.content) {
+            // 設定は最新を取り込み（自分の変更で上書き）
+            GH.settingsSha = result.sha;
+          }
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+  
+  async function manualSync() {
+    showStatus('GitHubと同期中...', 'loading');
+    const ok = await syncFromGitHub();
+    if (ok) showStatus('✓ 同期完了', 'success');
+  }
+  
+  // ========================================
+  // モーダル
+  // ========================================
+  
+  function openModal(tab) {
+    document.getElementById('modal').classList.add('show');
+    switchTab(tab);
+    loadSettingsToForm();
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+  }
+  function switchTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    ['settings','github','history'].forEach(name => {
+      document.getElementById('tab-' + name).style.display = tab === name ? 'block' : 'none';
+    });
+    document.getElementById('modalTitle').textContent = 
+      tab === 'settings' ? '設定' : 
+      tab === 'github' ? 'GitHub接続' : '返信履歴';
+    if (tab === 'history') renderHistory();
+  }
+  
+  async function loadSettingsToForm() {
+    document.getElementById('signatureText').value = SETTINGS.signature || '';
+    document.getElementById('customInstructions').value = SETTINGS.instructions || '';
+    document.getElementById('userName').value = await localGet('user:name') || '';
+    document.getElementById('ghToken').value = GH.token;
+    document.getElementById('ghRepo').value = GH.repo;
+    document.getElementById('ghBranch').value = GH.branch || 'main';
+  }
+  
+  async function saveSettings() {
+    SETTINGS.signature = document.getElementById('signatureText').value;
+    SETTINGS.instructions = document.getElementById('customInstructions').value;
+    await localSet('user:name', document.getElementById('userName').value);
+    
+    if (GH.connected) {
+      try {
+        await pushSettingsToGitHub();
+        showStatus('✓ 設定をGitHubに保存しました', 'success');
+      } catch(e) {
+        showStatus('保存エラー: ' + e.message, 'error');
+      }
+    } else {
+      // ローカル保存のみ
+      await localSet('local:settings', JSON.stringify(SETTINGS));
+      showStatus('✓ 設定を保存しました（ローカル）', 'success');
+    }
+    closeModal();
+  }
+  
+  async function testGitHub() {
+    const token = document.getElementById('ghToken').value.trim();
+    const repo = document.getElementById('ghRepo').value.trim();
+    const branch = document.getElementById('ghBranch').value.trim() || 'main';
+    
+    if (!token || !repo) {
+      showStatus('TokenとRepoを入力してください', 'error');
+      return;
+    }
+    
+    showStatus('接続テスト中...', 'loading');
+    try {
+      const info = await testGitHubConnection(token, repo, branch);
+      showStatus(`✓ 接続成功: ${info.full_name} (${info.private ? 'プライベート' : 'パブリック'})`, 'success');
+    } catch(e) {
+      showStatus('✗ 接続失敗: ' + e.message, 'error');
+    }
+  }
+  
+  async function saveGitHubSettings() {
+    const token = document.getElementById('ghToken').value.trim();
+    const repo = document.getElementById('ghRepo').value.trim();
+    const branch = document.getElementById('ghBranch').value.trim() || 'main';
+    
+    if (!token || !repo) {
+      showStatus('TokenとRepoを入力してください', 'error');
+      return;
+    }
+    
+    await localSet('gh:token', token);
+    await localSet('gh:repo', repo);
+    await localSet('gh:branch', branch);
+    
+    GH.token = token;
+    GH.repo = repo;
+    GH.branch = branch;
+    
+    showStatus('GitHubと同期中...', 'loading');
+    const ok = await syncFromGitHub();
+    if (ok) {
+      showStatus('✓ GitHubに接続しました', 'success');
+      closeModal();
+    }
+  }
+  
+  // ========================================
+  // 履歴管理
+  // ========================================
+  
+  function generateId() {
+    return Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+  
+  async function addHistoryItem(item) {
+    item.id = item.id || generateId();
+    item.timestamp = item.timestamp || Date.now();
+    HISTORY.unshift(item);
+    
+    if (GH.connected) {
+      try {
+        await pushHistoryToGitHub();
+      } catch(e) {
+        console.error(e);
+        showStatus('GitHub保存失敗（ローカルには保存済み）: ' + e.message, 'error');
+        // ローカルにフォールバック
+        await localSet('local:history', JSON.stringify(HISTORY));
+      }
+    } else {
+      await localSet('local:history', JSON.stringify(HISTORY));
+    }
+    updateStats();
+  }
+  
+  async function updateHistoryItemById(id, updates) {
+    const idx = HISTORY.findIndex(h => h.id === id);
+    if (idx === -1) return;
+    HISTORY[idx] = { ...HISTORY[idx], ...updates };
+    
+    if (GH.connected) {
+      try { await pushHistoryToGitHub(); } catch(e) {}
+    } else {
+      await localSet('local:history', JSON.stringify(HISTORY));
+    }
+  }
+  
+  async function removeHistoryItemById(id) {
+    HISTORY = HISTORY.filter(h => h.id !== id);
+    
+    if (GH.connected) {
+      try { await pushHistoryToGitHub(); } catch(e) {}
+    } else {
+      await localSet('local:history', JSON.stringify(HISTORY));
+    }
+    updateStats();
+  }
+  
+  function updateStats() {
+    document.getElementById('statHistory').textContent = HISTORY.length;
+    document.getElementById('statStarred').textContent = HISTORY.filter(i => i.starred).length;
+  }
+  
+  function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function formatDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    
+    const categories = [...new Set(HISTORY.map(i => i.category).filter(Boolean))];
+    const filterCat = document.getElementById('filterCategory');
+    const currentCat = filterCat.value;
+    filterCat.innerHTML = '<option value="">すべてのカテゴリ</option>' +
+      categories.map(c => `<option value="${escapeHtml(c)}" ${c===currentCat?'selected':''}>${escapeHtml(c)}</option>`).join('');
+    
+    const searchText = document.getElementById('searchInput').value.toLowerCase();
+    const filterStar = document.getElementById('filterStar').value;
+    
+    let filtered = HISTORY;
+    if (searchText) {
+      filtered = filtered.filter(i => 
+        (i.customerEmail || '').toLowerCase().includes(searchText) ||
+        (i.reply || '').toLowerCase().includes(searchText) ||
+        (i.category || '').toLowerCase().includes(searchText)
+      );
+    }
+    if (currentCat) filtered = filtered.filter(i => i.category === currentCat);
+    if (filterStar === 'starred') filtered = filtered.filter(i => i.starred);
+    
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty">該当する履歴がありません</div>';
+      return;
+    }
+    
+    list.innerHTML = filtered.map(item => {
+      const preview = (item.customerEmail || '').substring(0, 50);
+      const cat = item.category ? `<span class="badge badge-category">${escapeHtml(item.category)}</span>` : '';
+      const author = item.author ? `<span class="author">by ${escapeHtml(item.author)}</span>` : '';
+      return `
+        <div class="history-item ${item.starred ? 'starred' : ''}">
+          <div class="history-head" onclick="toggleHistory('${item.id}')">
+            <div class="history-meta">
+              ${cat}
+              <span>${formatDate(item.timestamp)}</span>
+              ${author}
+              <span class="preview">${escapeHtml(preview)}...</span>
+            </div>
+            <div class="history-actions" onclick="event.stopPropagation()">
+              <button class="icon-btn ${item.starred ? 'starred' : ''}" onclick="toggleStar('${item.id}', ${!item.starred})" title="お手本にする">
+                ${item.starred ? '⭐' : '☆'}
+              </button>
+              <button class="icon-btn" onclick="useAsTemplate('${item.id}')" title="再利用">📋</button>
+              <button class="icon-btn" onclick="removeHistory('${item.id}')" title="削除">🗑</button>
+            </div>
+          </div>
+          <div class="history-body" id="body-${item.id}">
+            <div class="history-section">
+              <div class="history-section-label">お客様のメール</div>
+              <div class="history-section-text">${escapeHtml(item.customerEmail)}</div>
+            </div>
+            <div class="history-section">
+              <div class="history-section-label">送った返信</div>
+              <div class="history-section-text">${escapeHtml(item.reply)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function toggleHistory(id) {
+    document.getElementById('body-' + id).classList.toggle('show');
+  }
+  
+  async function toggleStar(id, newValue) {
+    await updateHistoryItemById(id, { starred: newValue });
+    renderHistory();
+    updateStats();
+  }
+  
+  async function removeHistory(id) {
+    if (!confirm('この履歴を削除しますか？（全員のツールから削除されます）')) return;
+    await removeHistoryItemById(id);
+    renderHistory();
+  }
+  
+  function useAsTemplate(id) {
+    const item = HISTORY.find(h => h.id === id);
+    if (!item) return;
+    document.getElementById('aiReply').value = item.reply || '';
+    document.getElementById('copyBtn').disabled = false;
+    closeModal();
+    showStatus('✓ 過去の返信を読み込みました', 'success');
+  }
+  
+  // ========================================
+  // メイン処理
+  // ========================================
+  
+  function clearInput() {
+    document.getElementById('customerEmail').value = '';
+    document.getElementById('extraNotes').value = '';
+    document.getElementById('aiReply').value = '';
+    document.getElementById('badges').innerHTML = '';
+    document.getElementById('refInfo').classList.remove('show');
+    document.getElementById('copyBtn').disabled = true;
+    document.getElementById('regenBtn').disabled = true;
+  }
+  
+  function showStatus(msg, type) {
+    const bar = document.getElementById('statusBar');
+    bar.className = 'status-bar show status-' + type;
+    if (type === 'loading') {
+      bar.innerHTML = `<div class="spinner"></div> ${msg}`;
+    } else {
+      bar.textContent = msg;
+    }
+    if (type !== 'loading') {
+      setTimeout(() => bar.classList.remove('show'), 3500);
+    }
+  }
+  
+  function setBadges(items) {
+    document.getElementById('badges').innerHTML = items.map(b => `<span class="badge ${b.cls || ''}">${b.text}</span>`).join('');
+  }
+  
+  let lastGenerated = null;
+  
+  function findRelevantHistory(category) {
+    const starred = HISTORY.filter(i => i.starred);
+    const sameCategory = HISTORY.filter(i => i.category === category);
+    const seen = new Set(starred.map(i => i.id));
+    const additional = sameCategory.filter(i => !seen.has(i.id)).slice(0, 3);
+    return {
+      starred: starred.slice(0, 5),
+      sameCategory: additional,
+      categoryName: category
+    };
+  }
+  
+  async function generateReply() {
+    const customerEmail = document.getElementById('customerEmail').value.trim();
+    if (!customerEmail) {
+      showStatus('お客様のメールを貼り付けてください', 'error');
+      return;
+    }
+    
+    const extraNotes = document.getElementById('extraNotes').value.trim();
+    const signature = SETTINGS.signature || '';
+    const instructions = SETTINGS.instructions || '';
+    const knownCategories = [...new Set(HISTORY.map(i => i.category).filter(Boolean))];
+    
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('copyBtn').disabled = true;
+    document.getElementById('regenBtn').disabled = true;
+    document.getElementById('aiReply').value = '';
+    document.getElementById('refInfo').classList.remove('show');
+    setBadges([]);
+    
+    try {
+      showStatus('お問い合わせ内容を分析中...', 'loading');
+      
+      const categoryPrompt = `あなたは楽天市場のカスタマーサポート分析担当です。以下のお客様メールを分析し、問い合わせカテゴリと感情を判定してください。
+
+## 既存のカテゴリ（あれば優先的にこの中から選ぶ）
+${knownCategories.length > 0 ? knownCategories.join(', ') : '（まだなし）'}
+
+## ルール
+- 既存カテゴリで適切なものがあればそれを使う
+- なければ新しいカテゴリ名を作る（例：返品交換、配送遅延、商品の使い方、サイズ確認、クレーム、不良品、キャンセル、領収書発行、在庫確認 など）
+- カテゴリ名は短く（最大8文字程度）
+- 感情：通常 / 困惑 / 不満 / 怒り のいずれか
+
+## お客様メール
+${customerEmail}
+
+## 出力（JSONのみ。前後に余計な文字なし）
+{"category": "カテゴリ名", "mood": "感情", "summary": "一行要約"}`;
+      
+      const catResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 200,
+          messages: [{ role: "user", content: categoryPrompt }]
+        })
+      });
+      
+      if (!catResponse.ok) throw new Error('分析エラー: ' + catResponse.status);
+      
+      const catData = await catResponse.json();
+      const catText = catData.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
+      
+      let categoryInfo;
+      try {
+        const jsonMatch = catText.match(/\{[\s\S]*\}/);
+        categoryInfo = JSON.parse(jsonMatch ? jsonMatch[0] : catText);
+      } catch(e) {
+        categoryInfo = { category: 'その他', mood: '通常', summary: '' };
+      }
+      
+      const relevant = findRelevantHistory(categoryInfo.category);
+      
+      const refInfoEl = document.getElementById('refInfo');
+      const refCount = relevant.starred.length + relevant.sameCategory.length;
+      if (refCount > 0) {
+        refInfoEl.innerHTML = `📚 参考にした履歴：⭐お手本 ${relevant.starred.length}件 + 同カテゴリ「${escapeHtml(categoryInfo.category)}」${relevant.sameCategory.length}件`;
+      } else {
+        refInfoEl.innerHTML = `📚 カテゴリ「${escapeHtml(categoryInfo.category)}」の過去履歴はまだありません（新規カテゴリ）`;
+      }
+      refInfoEl.classList.add('show');
+      
+      showStatus('AIが返信を作成中...', 'loading');
+      
+      let examplesText = '';
+      if (relevant.starred.length > 0) {
+        examplesText += '\n\n## ⭐お手本にすべき返信例（特に重視・トーンを真似る）\n';
+        examplesText += relevant.starred.map((ex, i) => 
+          `### お手本${i+1}（カテゴリ: ${ex.category || '不明'}）\n[お客様メール]\n${ex.customerEmail}\n\n[送った返信]\n${ex.reply}`
+        ).join('\n\n---\n\n');
+      }
+      if (relevant.sameCategory.length > 0) {
+        examplesText += `\n\n## 同カテゴリ「${categoryInfo.category}」の過去返信（参考）\n`;
+        examplesText += relevant.sameCategory.map((ex, i) => 
+          `### 参考${i+1}\n[お客様メール]\n${ex.customerEmail}\n\n[送った返信]\n${ex.reply}`
+        ).join('\n\n---\n\n');
+      }
+      
+      const systemPrompt = `あなたは楽天市場の店舗「ゆかい屋」のカスタマーサポート担当「返信ちゃん」です。
+ゆかい屋は便利グッズ・小物（防水テープ、フットケア用品、防災グッズ、家電アクセサリー、キッチン用品など）を扱う楽天店舗で、単価1000〜2000円帯の商品が中心です。
+
+## 返信の基本方針
+- 楽天市場の店舗らしい、丁寧で温かみのある日本語
+- お客様の名前が分かる場合は冒頭で「〇〇様」と呼びかける
+- お客様の感情に寄り添う（特にクレームや困っている時）
+- 簡潔で分かりやすく。一文を長くしすぎない
+- 過剰な謝罪は避け、解決策・次のアクションを明確に示す
+- 単価が低い商品なので、過度に大げさにせず、誠実な対応を心がける
+
+## 問い合わせタイプ別の対応
+- 商品について：仕様・使い方の説明は丁寧に。分からない場合は確認すると伝える
+- 配送・納期：状況を確認してすぐ回答する姿勢を示す
+- 返品・交換・キャンセル：楽天のルールに沿って案内。お客様の負担をなるべく軽減
+- クレーム・トラブル：まず受け止める。言い訳より解決策。必要なら代替品・返金を提案
+
+## このメールの分類結果
+- カテゴリ: ${categoryInfo.category}
+- 感情: ${categoryInfo.mood}
+- 要約: ${categoryInfo.summary}
+
+${examplesText ? '## 過去の返信パターン\n以下の過去返信のトーン・構成・言い回しを学習して、今回のメールに合わせた返信を作成してください。お手本のスタイルを踏襲することが特に重要です。' + examplesText : ''}
+
+## 署名
+返信の末尾に必ず以下の署名をつけてください：
+${signature || 'ゆかい屋 カスタマーサポート'}
+
+${instructions ? '## 店主からの追加指示\n' + instructions : ''}
+
+## 出力フォーマット
+返信メール本文のみを出力してください。冒頭の挨拶から末尾の署名まで、そのままコピペで使える完成形にしてください。余計な前置きや説明は一切不要です。`;
+      
+      const userPrompt = `${extraNotes ? '## 担当者メモ\n' + extraNotes + '\n\n' : ''}## お客様からのメール
+${customerEmail}
+
+このメールへの返信を作成してください。`;
+      
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }]
+        })
+      });
+      
+      if (!response.ok) throw new Error('返信生成エラー: ' + response.status);
+      
+      const data = await response.json();
+      const replyText = data.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
+      
+      document.getElementById('aiReply').value = replyText;
+      
+      const badges = [{ text: categoryInfo.category, cls: 'badge-category' }];
+      const mood = categoryInfo.mood || '';
+      let moodCls = 'badge-success';
+      if (mood.includes('怒') || mood.includes('不満')) moodCls = 'badge-warning';
+      else if (mood.includes('困')) moodCls = 'badge-warning';
+      badges.push({ text: mood, cls: moodCls });
+      setBadges(badges);
+      
+      lastGenerated = {
+        category: categoryInfo.category,
+        mood: categoryInfo.mood,
+        summary: categoryInfo.summary,
+        extraNotes,
+        customerEmail
+      };
+      
+      showStatus('✓ 返信を生成しました。編集してOKボタンで送信＆保存', 'success');
+      document.getElementById('copyBtn').disabled = false;
+      document.getElementById('regenBtn').disabled = false;
+      
+    } catch (err) {
+      console.error(err);
+      showStatus('エラー: ' + err.message, 'error');
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+    }
+  }
+  
+  function regenerateReply() {
+    generateReply();
+  }
+  
+  async function copyAndSave() {
+    const text = document.getElementById('aiReply').value.trim();
+    if (!text) return;
+    
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch(e) {
+      const ta = document.getElementById('aiReply');
+      ta.select();
+      document.execCommand('copy');
+    }
+    
+    if (lastGenerated) {
+      const userName = await localGet('user:name') || '匿名';
+      const item = {
+        ...lastGenerated,
+        reply: text,
+        author: userName,
+        starred: false
+      };
+      
+      try {
+        await addHistoryItem(item);
+        const syncMsg = GH.connected ? 'GitHubに保存' : 'ローカルに保存';
+        showStatus(`✓ コピー完了・${syncMsg}（カテゴリ: ${lastGenerated.category}）`, 'success');
+      } catch(e) {
+        showStatus('保存エラー: ' + e.message, 'error');
+      }
+      lastGenerated = null;
+    } else {
+      showStatus('✓ コピーしました', 'success');
+    }
+  }
+  
+  // ========================================
+  // 初回セットアップ
+  // ========================================
+  
+  function skipSetup() {
+    document.getElementById('setupOverlay').classList.remove('show');
+    localSet('setup:dismissed', '1');
+  }
+  
+  function goToSetup() {
+    document.getElementById('setupOverlay').classList.remove('show');
+    openModal('github');
+  }
+  
+  // ========================================
+  // 自動同期（30秒ごと）
+  // ========================================
+  
+  let autoSyncInterval = null;
+  function startAutoSync() {
+    if (autoSyncInterval) clearInterval(autoSyncInterval);
+    autoSyncInterval = setInterval(async () => {
+      if (GH.connected) {
+        try {
+          // 最新の履歴・設定を取得（自分の変更がない時のみ）
+          const result = await ghGetFile(GH.historyPath);
+          if (result.sha !== GH.historySha && result.content) {
+            HISTORY = JSON.parse(result.content);
+            GH.historySha = result.sha;
+            updateStats();
+            // 履歴画面が開いていたら更新
+            if (document.getElementById('tab-history').style.display !== 'none') {
+              renderHistory();
+            }
+          }
+        } catch(e) {}
+      }
+    }, 30000);
+  }
+  
+  // ========================================
+  // 起動
+  // ========================================
+  
+  async function init() {
+    const hasConfig = await loadGitHubConfig();
+    
+    if (hasConfig) {
+      // GitHubから同期
+      await syncFromGitHub();
+      startAutoSync();
+    } else {
+      // ローカルから読み込み
+      const localHist = await localGet('local:history');
+      if (localHist) {
+        try { HISTORY = JSON.parse(localHist); } catch(e) {}
+      }
+      const localSet_ = await localGet('local:settings');
+      if (localSet_) {
+        try { SETTINGS = JSON.parse(localSet_); } catch(e) {}
+      }
+      
+      const dismissed = await localGet('setup:dismissed');
+      if (!dismissed) {
+        document.getElementById('setupOverlay').classList.add('show');
+      } else {
+        setSyncStatus('local', 'ローカルのみ');
+      }
+    }
+    updateStats();
+  }
+  
+  init();
+</script>
+</body>
+</html>
