@@ -747,7 +747,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.5</span>
+        <span class="logo-version">v2.6</span>
       </div>
     </div>
     <div class="stats">
@@ -1994,6 +1994,79 @@
   }
   
   // ========================================
+  // Anthropic API呼び出し（自動リトライ付き）
+  // ========================================
+  // 529(過負荷), 503(利用不可), 500(内部エラー), 429(レート制限) で自動リトライ
+  // 最大3回、待機時間は 2秒 → 5秒 → 10秒
+  
+  async function callAnthropicAPI(body, statusCallback) {
+    const maxRetries = 3;
+    const waitTimes = [2000, 5000, 10000]; // ms
+    const retriableStatuses = [429, 500, 502, 503, 504, 529];
+    
+    let lastError = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_KEY,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
+          body: JSON.stringify(body)
+        });
+        
+        if (res.ok) {
+          // 成功
+          return await res.json();
+        }
+        
+        // エラー時：リトライ可能か判定
+        if (retriableStatuses.includes(res.status) && attempt < maxRetries) {
+          const waitMs = waitTimes[attempt];
+          const errType = res.status === 529 ? 'サーバーが混雑しています' 
+                        : res.status === 429 ? 'リクエストが多すぎます'
+                        : res.status === 503 ? 'サーバー利用不可'
+                        : 'サーバーエラー';
+          if (statusCallback) {
+            statusCallback(`⚠️ ${errType} (${res.status})。${Math.ceil(waitMs/1000)}秒後に再試行します（${attempt + 1}/${maxRetries}回目）`);
+          }
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        
+        // リトライ不可 or 最大試行回数到達
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error?.message || res.statusText;
+        let hint = '';
+        if (res.status === 401) hint = ' (APIキーが無効。⚙設定 → 🤖AI設定で確認してください)';
+        else if (res.status === 402) hint = ' (クレジット残高不足。console.anthropic.comで確認してください)';
+        else if (res.status === 529) hint = ' (Anthropicサーバーが混雑中。少し時間を置いて再試行してください)';
+        throw new Error(`${res.status}: ${errMsg}${hint}`);
+        
+      } catch(e) {
+        lastError = e;
+        // ネットワーク系のエラーもリトライ
+        if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) && attempt < maxRetries) {
+          const waitMs = waitTimes[attempt];
+          if (statusCallback) {
+            statusCallback(`⚠️ ネットワークエラー。${Math.ceil(waitMs/1000)}秒後に再試行します（${attempt + 1}/${maxRetries}回目）`);
+          }
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        // それ以外はそのまま投げる
+        throw e;
+      }
+    }
+    
+    throw lastError || new Error('リトライ上限に達しました');
+  }
+  
+  // ========================================
   // 担当者リスト管理
   // ========================================
   
@@ -2990,24 +3063,12 @@ ${customerEmail}
 ## 出力（JSONのみ。前後に余計な文字なし）
 {"category": "カテゴリ名", "mood": "感情", "summary": "一行要約"}`;
       
-      const catResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 200,
-          messages: [{ role: "user", content: categoryPrompt }]
-        })
-      });
+      const catData = await callAnthropicAPI({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        messages: [{ role: "user", content: categoryPrompt }]
+      }, (msg) => showStatus(msg, 'loading'));
       
-      if (!catResponse.ok) throw new Error('分析エラー: ' + catResponse.status);
-      
-      const catData = await catResponse.json();
       const catText = catData.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
       
       let categoryInfo;
@@ -3127,25 +3188,13 @@ ${customerEmail}
 
 このメールへの返信を「${staffName}」として作成してください。`;
       
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1500,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }]
-        })
-      });
+      const data = await callAnthropicAPI({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }]
+      }, (msg) => showStatus(msg, 'loading'));
       
-      if (!response.ok) throw new Error('返信生成エラー: ' + response.status);
-      
-      const data = await response.json();
       const replyText = data.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
       
       document.getElementById('aiReply').value = replyText;
