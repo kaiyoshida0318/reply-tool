@@ -540,7 +540,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v1.0</span>
+        <span class="logo-version">v1.1</span>
       </div>
     </div>
     <div class="stats">
@@ -707,6 +707,8 @@
           <h3>3. ブランチ名（通常はmain）</h3>
           <input type="text" id="ghBranch" placeholder="main" value="main">
         </div>
+        
+        <div id="ghTestResult" class="status-bar" style="margin-bottom: 12px;"></div>
         
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
           <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
@@ -992,6 +994,8 @@
     document.getElementById('modal').classList.remove('show');
     const aiResult = document.getElementById('aiTestResult');
     if (aiResult) aiResult.classList.remove('show');
+    const ghResult = document.getElementById('ghTestResult');
+    if (ghResult) ghResult.classList.remove('show');
   }
   function switchTab(tab) {
     document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -1099,22 +1103,40 @@
     closeModal();
   }
   
+  function showGHTestResult(msg, type) {
+    const el = document.getElementById('ghTestResult');
+    el.className = 'status-bar show status-' + type;
+    if (type === 'loading') {
+      el.innerHTML = `<div class="spinner"></div> ${msg}`;
+    } else {
+      el.innerHTML = msg;
+    }
+  }
+  
   async function testGitHub() {
     const token = document.getElementById('ghToken').value.trim();
     const repo = document.getElementById('ghRepo').value.trim();
     const branch = document.getElementById('ghBranch').value.trim() || 'main';
     
     if (!token || !repo) {
-      showStatus('TokenとRepoを入力してください', 'error');
+      showGHTestResult('TokenとRepoを入力してください', 'error');
+      return;
+    }
+    if (!token.startsWith('github_pat_') && !token.startsWith('ghp_')) {
+      showGHTestResult('⚠️ トークンは「github_pat_」または「ghp_」で始まるはずです。形式を確認してください', 'error');
       return;
     }
     
-    showStatus('接続テスト中...', 'loading');
+    showGHTestResult('接続テスト中...', 'loading');
     try {
       const info = await testGitHubConnection(token, repo, branch);
-      showStatus(`✓ 接続成功: ${info.full_name} (${info.private ? 'プライベート' : 'パブリック'})`, 'success');
+      showGHTestResult(`✓ 接続成功: ${info.full_name} (${info.private ? 'プライベート' : 'パブリック'})`, 'success');
     } catch(e) {
-      showStatus('✗ 接続失敗: ' + e.message, 'error');
+      let hint = '';
+      if (e.message.includes('401')) hint = '<br><small>→ トークンが無効または期限切れです。GitHubで新しいトークンを発行してください。</small>';
+      else if (e.message.includes('404')) hint = '<br><small>→ リポジトリが見つかりません。リポジトリ名（所有者/リポジトリ名）を確認してください。</small>';
+      else if (e.message.includes('403')) hint = '<br><small>→ トークンの権限が不足しています。Contents: Read and write になっているか確認してください。</small>';
+      showGHTestResult('✗ 接続失敗<br>' + e.message + hint, 'error');
     }
   }
   
@@ -1124,7 +1146,7 @@
     const branch = document.getElementById('ghBranch').value.trim() || 'main';
     
     if (!token || !repo) {
-      showStatus('TokenとRepoを入力してください', 'error');
+      showGHTestResult('TokenとRepoを入力してください', 'error');
       return;
     }
     
@@ -1136,11 +1158,13 @@
     GH.repo = repo;
     GH.branch = branch;
     
-    showStatus('GitHubと同期中...', 'loading');
+    showGHTestResult('GitHubと同期中...', 'loading');
     const ok = await syncFromGitHub();
     if (ok) {
-      showStatus('✓ GitHubに接続しました', 'success');
-      closeModal();
+      showGHTestResult('✓ GitHubに接続しました', 'success');
+      setTimeout(() => closeModal(), 1500);
+    } else {
+      showGHTestResult('✗ 同期に失敗しました。トークンとリポジトリ名を確認してください', 'error');
     }
   }
   
