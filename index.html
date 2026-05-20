@@ -738,7 +738,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.1</span>
+        <span class="logo-version">v2.2</span>
       </div>
     </div>
     <div class="stats">
@@ -771,6 +771,14 @@
           <label>対応する担当者</label>
           <select id="staffSelect" onchange="onStaffSelectChange()">
             <option value="">担当者を選択してください</option>
+          </select>
+        </div>
+        
+        <div class="meta-field">
+          <label>お客様の情報（注文番号・氏名など）</label>
+          <select id="customerInfoStatus" onchange="onCustomerInfoStatusChange()">
+            <option value="known">把握済み（メール内に注文番号・氏名あり、または分かっている）</option>
+            <option value="unknown">不明（お客様に問合せ番号・氏名を聞く必要あり）</option>
           </select>
         </div>
         
@@ -1984,6 +1992,18 @@
     }
   }
   
+  function onCustomerInfoStatusChange() {
+    const v = document.getElementById('customerInfoStatus').value;
+    try { localStorage.setItem('replymaker:customerInfoStatus', v); } catch(e) {}
+  }
+  
+  function restoreCustomerInfoStatus() {
+    try {
+      const v = localStorage.getItem('replymaker:customerInfoStatus');
+      if (v) document.getElementById('customerInfoStatus').value = v;
+    } catch(e) {}
+  }
+  
   // 今日の保存一覧のロード（今日の日付のもののみ）
   async function loadTodayItems() {
     try {
@@ -2658,6 +2678,7 @@
       showStatus('担当者を選択してください（右上「👤 担当者」から登録できます）', 'error');
       return;
     }
+    const customerInfoStatus = document.getElementById('customerInfoStatus').value;
     const instructions = SETTINGS.instructions || '';
     const knownCategories = [...new Set(HISTORY.map(i => i.category).filter(Boolean))];
     
@@ -2805,6 +2826,11 @@ ${customerEmail}
 - カテゴリ: ${categoryInfo.category}
 - 感情: ${categoryInfo.mood}
 - 要約: ${categoryInfo.summary}
+
+## お客様情報の把握状況
+${customerInfoStatus === 'known' 
+  ? '【把握済み】お客様の氏名・注文番号などはこちらで把握済みです。返信の中で「お名前」「ご注文番号」「ご注文内容」などを改めて確認・質問する必要はありません。すぐに本題の対応に入ってください。'
+  : '【不明】お客様の氏名・注文番号などがこちらで把握できていません。返信の中で必要な情報（お名前、ご注文番号など）をお伝えいただくよう依頼してください。情報をいただいてから具体的な対応に入る旨を伝えてください。'}
 
 ${examplesText ? '## 過去の返信パターン\n以下の過去返信のトーン・構成・言い回しを学習して、今回のメールに合わせた返信を作成してください。テンプレートの中に出てくる担当者名（佐藤・鈴木・吉田・高橋など）は無視して、必ず「${staffName}」を使ってください。署名・締めの言葉もテンプレートに合わせてください。' + examplesText : ''}
 
@@ -2958,6 +2984,7 @@ ${customerEmail}
     await loadTodayItems();
     await loadStaffList();
     updateStaffSelect();
+    restoreCustomerInfoStatus();
     const hasConfig = await loadGitHubConfig();
     
     if (hasConfig) {
