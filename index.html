@@ -217,6 +217,8 @@
   .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
   .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { background: #f5f3ee; }
+  .btn-data-mgmt { background: #fcf5d8; color: #6b5a1a; border: 1px solid #e8d68a; }
+  .btn-data-mgmt:hover { background: #f5ead0; border-color: #d4b86c; }
   .btn-success { background: var(--success); color: white; }
   .btn-success:hover { background: #557a3f; }
   .btn-sm { padding: 6px 12px; font-size: 12px; }
@@ -745,7 +747,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.4</span>
+        <span class="logo-version">v2.5</span>
       </div>
     </div>
     <div class="stats">
@@ -757,10 +759,10 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn" title="他のスタッフの最新履歴を取りに行きます">🔄 同期</button>
-      <button class="btn btn-secondary btn-sm" onclick="openStaffModal()">👤 担当者</button>
-      <button class="btn btn-secondary btn-sm" onclick="openActionModal()">📋 対応</button>
+      <button class="btn btn-data-mgmt btn-sm" onclick="openStaffModal()">👤 担当者</button>
+      <button class="btn btn-data-mgmt btn-sm" onclick="openActionModal()">📋 対応</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('history')">📚 履歴</button>
+      <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn" title="他のスタッフの最新履歴を取りに行きます">🔄 同期（最新情報取得）</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('settings')">⚙ 設定</button>
     </div>
   </header>
