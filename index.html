@@ -171,12 +171,19 @@
     background: #ffffff;
   }
   
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 768px) {
+    .meta-grid { grid-template-columns: 1fr; }
+  }
   .meta-field { display: flex; flex-direction: column; gap: 4px; }
   .meta-field label {
     font-size: 11px;
     color: var(--text-soft);
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
   }
   .meta-field input, .meta-field select {
@@ -738,7 +745,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.2</span>
+        <span class="logo-version">v2.3</span>
       </div>
     </div>
     <div class="stats">
@@ -752,6 +759,7 @@
     <div class="header-actions">
       <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn" title="他のスタッフの最新履歴を取りに行きます">🔄 同期</button>
       <button class="btn btn-secondary btn-sm" onclick="openStaffModal()">👤 担当者</button>
+      <button class="btn btn-secondary btn-sm" onclick="openActionModal()">📋 対応</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('history')">📚 履歴</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('settings')">⚙ 設定</button>
     </div>
@@ -767,19 +775,28 @@
       <div class="panel-body">
         <textarea id="customerEmail" placeholder="メールワイズから受信したお客様のメールをここに貼り付けてください..."></textarea>
         
-        <div class="meta-field">
-          <label>対応する担当者</label>
-          <select id="staffSelect" onchange="onStaffSelectChange()">
-            <option value="">担当者を選択してください</option>
-          </select>
-        </div>
-        
-        <div class="meta-field">
-          <label>お客様の情報（注文番号・氏名など）</label>
-          <select id="customerInfoStatus" onchange="onCustomerInfoStatusChange()">
-            <option value="known">把握済み（メール内に注文番号・氏名あり、または分かっている）</option>
-            <option value="unknown">不明（お客様に問合せ番号・氏名を聞く必要あり）</option>
-          </select>
+        <div class="meta-grid">
+          <div class="meta-field">
+            <label>■ 希望する対応</label>
+            <select id="actionSelect" onchange="onActionSelectChange()">
+              <option value="">未選択（AIが判断）</option>
+            </select>
+          </div>
+          
+          <div class="meta-field">
+            <label>■ 対応する担当者</label>
+            <select id="staffSelect" onchange="onStaffSelectChange()">
+              <option value="">担当者を選択してください</option>
+            </select>
+          </div>
+          
+          <div class="meta-field">
+            <label>■ お客様の情報</label>
+            <select id="customerInfoStatus" onchange="onCustomerInfoStatusChange()">
+              <option value="known">把握済み</option>
+              <option value="unknown">不明（情報を聞く）</option>
+            </select>
+          </div>
         </div>
         
         <button class="btn btn-primary" onclick="generateReply()" id="generateBtn" style="justify-content: center;">
@@ -839,6 +856,38 @@
     💡 「コピーのみ」は履歴に保存しません。「OK・コピー（履歴に保存）」を押すと下の一覧に追加され、まとめてアップロードできます。
   </div>
   
+</div>
+
+<!-- 対応管理モーダル -->
+<div class="modal-overlay" id="actionModal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2>📋 対応リスト管理</h2>
+      <button class="modal-close" onclick="closeActionModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        <strong>📘 対応リストについて</strong>
+        <p style="color: inherit; margin-top: 6px;">「希望する対応」ドロップダウンに表示される選択肢を管理します。選んだ対応に沿って返信が作成されます。例：返品、キャンセル、再送、交換、返金など。</p>
+      </div>
+      
+      <div class="modal-section">
+        <h3>新しい対応を追加</h3>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="newActionName" placeholder="例：返品、キャンセル、再送" style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 13px;" onkeypress="if(event.key==='Enter') addAction()">
+          <button class="btn btn-primary btn-sm" onclick="addAction()">＋ 追加</button>
+        </div>
+      </div>
+      
+      <div class="modal-section">
+        <h3>登録済み対応</h3>
+        <div id="actionList" class="staff-list"></div>
+      </div>
+    </div>
+    <div style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+      <button class="btn btn-secondary" onclick="closeActionModal()">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <!-- 担当者管理モーダル -->
@@ -1081,9 +1130,11 @@
     historyPath: 'data/history.json',
     settingsPath: 'data/settings.json',
     staffPath: 'data/staff.json',
+    actionPath: 'data/actions.json',
     historySha: null,
     settingsSha: null,
     staffSha: null,
+    actionSha: null,
     connected: false
   };
   
@@ -1234,23 +1285,36 @@
           GH.staffSha = staffResult.sha;
         } catch(e) { STAFF_LIST = []; }
       } else {
-        // GitHubに担当者リストファイルが無い場合
         GH.staffSha = null;
-        // 既にローカルに担当者がいれば、初回アップロード
         if (STAFF_LIST.length > 0) {
-          try {
-            await pushStaffToGitHub();
-          } catch(e) { /* 失敗してもよい */ }
+          try { await pushStaffToGitHub(); } catch(e) {}
         }
       }
-      // ローカルにも保存
       await localSet('staff:list', JSON.stringify(STAFF_LIST));
-      // ドロップダウンを更新
       updateStaffSelect();
-      // 担当者管理モーダルが開いていればリスト再描画
       const staffModal = document.getElementById('staffModal');
       if (staffModal && staffModal.classList.contains('show')) {
         renderStaffList();
+      }
+      
+      // 対応リストの取得
+      const actionResult = await ghGetFile(GH.actionPath);
+      if (actionResult.content) {
+        try {
+          ACTION_LIST = JSON.parse(actionResult.content);
+          GH.actionSha = actionResult.sha;
+        } catch(e) { ACTION_LIST = []; }
+      } else {
+        GH.actionSha = null;
+        if (ACTION_LIST.length > 0) {
+          try { await pushActionToGitHub(); } catch(e) {}
+        }
+      }
+      await localSet('action:list', JSON.stringify(ACTION_LIST));
+      updateActionSelect();
+      const actionModal = document.getElementById('actionModal');
+      if (actionModal && actionModal.classList.contains('show')) {
+        renderActionList();
       }
       
       GH.connected = true;
@@ -1330,12 +1394,10 @@
         return true;
       } catch(e) {
         if (e.conflict && attempt < 2) {
-          // 競合時は最新を取得してマージ
           const result = await ghGetFile(GH.staffPath);
           if (result.content) {
             try {
               const remoteList = JSON.parse(result.content);
-              // 重複なしマージ
               const merged = [...new Set([...remoteList, ...STAFF_LIST])];
               STAFF_LIST = merged;
               GH.staffSha = result.sha;
@@ -1343,6 +1405,37 @@
               updateStaffSelect();
             } catch(e2) {
               GH.staffSha = result.sha;
+            }
+          }
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+  
+  async function pushActionToGitHub() {
+    if (!GH.connected) return false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = JSON.stringify(ACTION_LIST, null, 2);
+        const newSha = await ghPutFile(GH.actionPath, content, GH.actionSha, `対応リスト更新 (${ACTION_LIST.length}件)`);
+        GH.actionSha = newSha;
+        return true;
+      } catch(e) {
+        if (e.conflict && attempt < 2) {
+          const result = await ghGetFile(GH.actionPath);
+          if (result.content) {
+            try {
+              const remoteList = JSON.parse(result.content);
+              const merged = [...new Set([...remoteList, ...ACTION_LIST])];
+              ACTION_LIST = merged;
+              GH.actionSha = result.sha;
+              await localSet('action:list', JSON.stringify(ACTION_LIST));
+              updateActionSelect();
+            } catch(e2) {
+              GH.actionSha = result.sha;
             }
           }
           continue;
@@ -1876,6 +1969,7 @@
   let ANTHROPIC_KEY = '';
   let TODAY_ITEMS = []; // 今日の保存一覧（ローカル）
   let STAFF_LIST = []; // 担当者リスト
+  let ACTION_LIST = []; // 対応リスト
   let LAST_REFERENCES = null; // 最後に生成した時の参考データ
   
   async function loadAnthropicKey() {
@@ -2002,6 +2096,107 @@
       const v = localStorage.getItem('replymaker:customerInfoStatus');
       if (v) document.getElementById('customerInfoStatus').value = v;
     } catch(e) {}
+  }
+  
+  // ========================================
+  // 対応リスト管理
+  // ========================================
+  
+  async function loadActionList() {
+    try {
+      const raw = await localGet('action:list');
+      if (raw) ACTION_LIST = JSON.parse(raw);
+    } catch(e) { ACTION_LIST = []; }
+  }
+  
+  async function saveActionList() {
+    try {
+      await localSet('action:list', JSON.stringify(ACTION_LIST));
+    } catch(e) {}
+  }
+  
+  function openActionModal() {
+    document.getElementById('actionModal').classList.add('show');
+    document.getElementById('newActionName').value = '';
+    renderActionList();
+    setTimeout(() => document.getElementById('newActionName').focus(), 100);
+  }
+  
+  function closeActionModal() {
+    document.getElementById('actionModal').classList.remove('show');
+  }
+  
+  async function addAction() {
+    const input = document.getElementById('newActionName');
+    const name = input.value.trim();
+    if (!name) return;
+    if (ACTION_LIST.includes(name)) {
+      showStatus('既に登録されている対応です', 'error');
+      return;
+    }
+    ACTION_LIST.push(name);
+    await saveActionList();
+    input.value = '';
+    renderActionList();
+    updateActionSelect();
+    input.focus();
+    if (GH.connected) {
+      try {
+        await pushActionToGitHub();
+        showStatus('✓ 対応を追加しました（全PCに同期されました）', 'success');
+      } catch(e) {
+        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
+      }
+    } else {
+      showStatus('✓ 対応を追加しました（ローカルのみ）', 'success');
+    }
+  }
+  
+  async function removeAction(name) {
+    if (!confirm(`「${name}」を対応リストから削除しますか？`)) return;
+    ACTION_LIST = ACTION_LIST.filter(n => n !== name);
+    await saveActionList();
+    renderActionList();
+    updateActionSelect();
+    if (GH.connected) {
+      try {
+        await pushActionToGitHub();
+        showStatus('✓ 対応を削除しました（全PCに同期されました）', 'success');
+      } catch(e) {
+        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
+      }
+    } else {
+      showStatus('✓ 対応を削除しました（ローカルのみ）', 'success');
+    }
+  }
+  
+  function renderActionList() {
+    const list = document.getElementById('actionList');
+    if (ACTION_LIST.length === 0) {
+      list.innerHTML = '<div class="staff-empty">まだ対応が登録されていません。<br>上の入力欄から追加してください。<br>例：返品、キャンセル、再送、交換、返金</div>';
+      return;
+    }
+    list.innerHTML = ACTION_LIST.map(name => `
+      <div class="staff-item">
+        <span class="staff-name">📋 ${escapeHtml(name)}</span>
+        <button class="icon-btn" onclick="removeAction('${escapeHtml(name)}')" title="削除">🗑</button>
+      </div>
+    `).join('');
+  }
+  
+  function updateActionSelect() {
+    const select = document.getElementById('actionSelect');
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">未選択（AIが判断）</option>' +
+      ACTION_LIST.map(name => 
+        `<option value="${escapeHtml(name)}" ${name === currentValue ? 'selected' : ''}>${escapeHtml(name)}</option>`
+      ).join('');
+  }
+  
+  function onActionSelectChange() {
+    const v = document.getElementById('actionSelect').value;
+    try { localStorage.setItem('replymaker:action:lastUsed', v); } catch(e) {}
   }
   
   // 今日の保存一覧のロード（今日の日付のもののみ）
@@ -2679,6 +2874,7 @@
       return;
     }
     const customerInfoStatus = document.getElementById('customerInfoStatus').value;
+    const desiredAction = document.getElementById('actionSelect').value.trim();
     const instructions = SETTINGS.instructions || '';
     const knownCategories = [...new Set(HISTORY.map(i => i.category).filter(Boolean))];
     
@@ -2826,6 +3022,13 @@ ${customerEmail}
 - カテゴリ: ${categoryInfo.category}
 - 感情: ${categoryInfo.mood}
 - 要約: ${categoryInfo.summary}
+
+${desiredAction ? `## 🎯 今回の対応方針（最優先・絶対に従う）
+返信は必ず「${desiredAction}」のルートに沿った内容にしてください。
+これは担当者の判断で決定された対応方針です。
+お客様のメール内容に関わらず、このルートで返信を作成してください。
+（例：「再送」なら再送の案内、「キャンセル」ならキャンセル処理完了の案内、「返品」なら返品手続きの案内）
+` : ''}
 
 ## お客様情報の把握状況
 ${customerInfoStatus === 'known' 
@@ -2983,8 +3186,18 @@ ${customerEmail}
     await loadAnthropicKey();
     await loadTodayItems();
     await loadStaffList();
+    await loadActionList();
     updateStaffSelect();
+    updateActionSelect();
     restoreCustomerInfoStatus();
+    // 最後に使った対応も復元
+    try {
+      const lastAction = localStorage.getItem('replymaker:action:lastUsed');
+      if (lastAction !== null) {
+        const sel = document.getElementById('actionSelect');
+        if (sel) sel.value = lastAction;
+      }
+    } catch(e) {}
     const hasConfig = await loadGitHubConfig();
     
     if (hasConfig) {
