@@ -591,6 +591,44 @@
     font-style: italic;
   }
   
+  /* 保存済みキー表示ボックス */
+  .key-saved-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #e3f0d4;
+    border: 1px solid #b8d49a;
+    border-radius: 6px;
+  }
+  .key-saved-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .key-saved-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--success);
+    flex-shrink: 0;
+  }
+  .key-saved-box code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-soft);
+    background: white;
+    padding: 4px 8px;
+    border-radius: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  
   .ref-info {
     background: #f0f6fb;
     border: 1px solid #c8dbed;
@@ -658,7 +696,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v1.2</span>
+        <span class="logo-version">v1.3</span>
       </div>
     </div>
     <div class="stats">
@@ -804,7 +842,20 @@
           <h3>1. Anthropic APIキー</h3>
           <p>取得先：<a href="https://console.anthropic.com/" target="_blank" style="color: var(--accent-deep);">console.anthropic.com</a> → API keys から発行<br>
           ⚠️ このキーはこのブラウザ内にのみ保存されます。GitHubには送信されません。</p>
-          <input type="password" id="anthropicKey" placeholder="sk-ant-api03-xxxxxxxxxxxxx">
+          
+          <!-- 保存済み表示 -->
+          <div id="anthropicKeySaved" class="key-saved-box" style="display:none;">
+            <div class="key-saved-info">
+              <span class="key-saved-label">✓ 保存済み</span>
+              <code id="anthropicKeyMask"></code>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="removeAnthropicKey()">🗑 削除</button>
+          </div>
+          
+          <!-- 入力欄 -->
+          <div id="anthropicKeyInput">
+            <input type="password" id="anthropicKey" placeholder="sk-ant-api03-xxxxxxxxxxxxx">
+          </div>
         </div>
         
         <div class="modal-section">
@@ -828,26 +879,32 @@
       <div id="tab-github" style="display:none;">
         <div class="info-box">
           <strong>📘 GitHubでデータを共有する仕組み</strong>
-          <p style="color: inherit; margin-top: 6px;">プライベートリポジトリにデータが保存され、設定したPC全員でリアルタイム共有されます。同時編集にも対応。</p>
+          <p style="color: inherit; margin-top: 6px;">プライベートリポジトリ <code>kaiyoshida0318/yukaiya-reply-data</code> にデータが保存され、設定したPC全員で共有されます。</p>
         </div>
         
         <div class="modal-section">
-          <h3>1. GitHub Personal Access Token</h3>
-          <p>GitHubの個人アクセストークン。スコープは <code>repo</code> が必要。<br>
+          <h3>GitHub Personal Access Token</h3>
+          <p>GitHubの個人アクセストークン。スコープは <code>Contents: Read and write</code> が必要。<br>
           発行先：<a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color: var(--accent-deep);">GitHub設定 → Tokens (fine-grained)</a></p>
-          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxx">
+          
+          <!-- 保存済み表示 -->
+          <div id="ghTokenSaved" class="key-saved-box" style="display:none;">
+            <div class="key-saved-info">
+              <span class="key-saved-label">✓ 保存済み</span>
+              <code id="ghTokenMask"></code>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="removeGhToken()">🗑 削除</button>
+          </div>
+          
+          <!-- 入力欄 -->
+          <div id="ghTokenInput">
+            <input type="password" id="ghToken" placeholder="github_pat_xxxxxxxxxxxxx">
+          </div>
         </div>
         
-        <div class="modal-section">
-          <h3>2. リポジトリ（所有者/リポジトリ名）</h3>
-          <p>事前に作成したプライベートリポジトリ。</p>
-          <input type="text" id="ghRepo" placeholder="例：yukaiya/reply-data" value="kaiyoshida0318/yukaiya-reply-data">
-        </div>
-        
-        <div class="modal-section">
-          <h3>3. ブランチ名（通常はmain）</h3>
-          <input type="text" id="ghBranch" placeholder="main" value="main">
-        </div>
+        <!-- 固定値（HTMLに埋め込みのみ、画面には表示しない） -->
+        <input type="hidden" id="ghRepo" value="kaiyoshida0318/yukaiya-reply-data">
+        <input type="hidden" id="ghBranch" value="main">
         
         <div id="ghTestResult" class="status-bar" style="margin-bottom: 12px;"></div>
         
@@ -1154,11 +1211,65 @@
     document.getElementById('signatureText').value = SETTINGS.signature || '';
     document.getElementById('customInstructions').value = SETTINGS.instructions || '';
     document.getElementById('userName').value = await localGet('user:name') || '';
-    document.getElementById('ghToken').value = GH.token;
-    document.getElementById('anthropicKey').value = ANTHROPIC_KEY;
-    // リポジトリとブランチは、保存値があればそれを、なければHTMLのデフォルト値を維持
-    if (GH.repo) document.getElementById('ghRepo').value = GH.repo;
-    if (GH.branch) document.getElementById('ghBranch').value = GH.branch;
+    
+    // AnthropicAPIキー：保存済みなら隠してマスク表示
+    updateAnthropicKeyDisplay();
+    // GitHubトークン：保存済みなら隠してマスク表示
+    updateGhTokenDisplay();
+  }
+  
+  function maskKey(key) {
+    if (!key) return '';
+    if (key.length <= 12) return '••••••••';
+    return '••••••••••••' + key.slice(-6);
+  }
+  
+  function updateAnthropicKeyDisplay() {
+    const savedBox = document.getElementById('anthropicKeySaved');
+    const inputBox = document.getElementById('anthropicKeyInput');
+    const maskEl = document.getElementById('anthropicKeyMask');
+    if (ANTHROPIC_KEY) {
+      savedBox.style.display = 'flex';
+      inputBox.style.display = 'none';
+      maskEl.textContent = maskKey(ANTHROPIC_KEY);
+    } else {
+      savedBox.style.display = 'none';
+      inputBox.style.display = 'block';
+      document.getElementById('anthropicKey').value = '';
+    }
+  }
+  
+  function updateGhTokenDisplay() {
+    const savedBox = document.getElementById('ghTokenSaved');
+    const inputBox = document.getElementById('ghTokenInput');
+    const maskEl = document.getElementById('ghTokenMask');
+    if (GH.token) {
+      savedBox.style.display = 'flex';
+      inputBox.style.display = 'none';
+      maskEl.textContent = maskKey(GH.token);
+    } else {
+      savedBox.style.display = 'none';
+      inputBox.style.display = 'block';
+      document.getElementById('ghToken').value = '';
+    }
+  }
+  
+  async function removeAnthropicKey() {
+    if (!confirm('APIキーを削除しますか？\n削除すると返信生成ができなくなります。')) return;
+    await localDelete('anthropic:key');
+    ANTHROPIC_KEY = '';
+    updateAnthropicKeyDisplay();
+    showAITestResult('✓ APIキーを削除しました', 'success');
+  }
+  
+  async function removeGhToken() {
+    if (!confirm('GitHubトークンを削除しますか？\n削除するとデータ共有ができなくなります（ローカルのみで動作）。')) return;
+    await localDelete('gh:token');
+    GH.token = '';
+    GH.connected = false;
+    setSyncStatus('local', 'ローカルのみ');
+    updateGhTokenDisplay();
+    showGHTestResult('✓ トークンを削除しました', 'success');
   }
   
   async function saveAnthropicKey() {
@@ -1169,6 +1280,7 @@
     }
     await localSet('anthropic:key', key);
     ANTHROPIC_KEY = key;
+    updateAnthropicKeyDisplay();
     showAITestResult('✓ APIキーを保存しました', 'success');
     setTimeout(() => closeModal(), 1500);
   }
@@ -1184,7 +1296,11 @@
   }
   
   async function testAnthropic() {
-    const key = document.getElementById('anthropicKey').value.trim();
+    // 保存済みならそれを使う。なければ入力欄から取得
+    let key = ANTHROPIC_KEY;
+    if (!key) {
+      key = document.getElementById('anthropicKey').value.trim();
+    }
     if (!key) {
       showAITestResult('APIキーを入力してください', 'error');
       return;
@@ -1255,12 +1371,16 @@
   }
   
   async function testGitHub() {
-    const token = document.getElementById('ghToken').value.trim();
+    // 保存済みならそれを使う。なければ入力欄から取得
+    let token = GH.token;
+    if (!token) {
+      token = document.getElementById('ghToken').value.trim();
+    }
     const repo = document.getElementById('ghRepo').value.trim();
     const branch = document.getElementById('ghBranch').value.trim() || 'main';
     
-    if (!token || !repo) {
-      showGHTestResult('TokenとRepoを入力してください', 'error');
+    if (!token) {
+      showGHTestResult('トークンを入力してください', 'error');
       return;
     }
     if (!token.startsWith('github_pat_') && !token.startsWith('ghp_')) {
@@ -1274,20 +1394,21 @@
       showGHTestResult(`✓ 接続成功: ${info.full_name} (${info.private ? 'プライベート' : 'パブリック'})`, 'success');
     } catch(e) {
       let hint = '';
-      if (e.message.includes('401')) hint = '<br><small>→ トークンが無効または期限切れです。GitHubで新しいトークンを発行してください。</small>';
-      else if (e.message.includes('404')) hint = '<br><small>→ リポジトリが見つかりません。リポジトリ名（所有者/リポジトリ名）を確認してください。</small>';
+      if (e.message.includes('401')) hint = '<br><small>→ トークンが無効または期限切れです。「削除」して新しいトークンを発行してください。</small>';
+      else if (e.message.includes('404')) hint = '<br><small>→ リポジトリが見つかりません。</small>';
       else if (e.message.includes('403')) hint = '<br><small>→ トークンの権限が不足しています。Contents: Read and write になっているか確認してください。</small>';
       showGHTestResult('✗ 接続失敗<br>' + e.message + hint, 'error');
     }
   }
   
   async function saveGitHubSettings() {
-    const token = document.getElementById('ghToken').value.trim();
+    const tokenInput = document.getElementById('ghToken').value.trim();
+    const token = tokenInput || GH.token; // 入力があればそれ、なければ既存
     const repo = document.getElementById('ghRepo').value.trim();
     const branch = document.getElementById('ghBranch').value.trim() || 'main';
     
-    if (!token || !repo) {
-      showGHTestResult('TokenとRepoを入力してください', 'error');
+    if (!token) {
+      showGHTestResult('トークンを入力してください', 'error');
       return;
     }
     
@@ -1299,13 +1420,15 @@
     GH.repo = repo;
     GH.branch = branch;
     
+    updateGhTokenDisplay();
+    
     showGHTestResult('GitHubと同期中...', 'loading');
     const ok = await syncFromGitHub();
     if (ok) {
       showGHTestResult('✓ GitHubに接続しました', 'success');
       setTimeout(() => closeModal(), 1500);
     } else {
-      showGHTestResult('✗ 同期に失敗しました。トークンとリポジトリ名を確認してください', 'error');
+      showGHTestResult('✗ 同期に失敗しました。トークンを確認してください', 'error');
     }
   }
   
