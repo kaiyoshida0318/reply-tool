@@ -615,11 +615,31 @@
     background: #faf9f6;
     border: 1px solid var(--border);
     border-radius: 6px;
+    gap: 12px;
+  }
+  .staff-item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
   }
   .staff-name {
     font-size: 14px;
     font-weight: 600;
     color: var(--text);
+    flex: 1;
+  }
+  .staff-name-edit, .action-name-edit {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    background: white;
+  }
+  .staff-name-edit:focus, .action-name-edit:focus {
+    outline: none;
+    border-color: var(--accent-deep);
   }
   .staff-empty {
     text-align: center;
@@ -747,7 +767,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.6</span>
+        <span class="logo-version">v2.7</span>
       </div>
     </div>
     <div class="stats">
@@ -2177,12 +2197,63 @@
       list.innerHTML = '<div class="staff-empty">まだ担当者が登録されていません。<br>上の入力欄から追加してください。</div>';
       return;
     }
-    list.innerHTML = STAFF_LIST.map(name => `
-      <div class="staff-item">
-        <span class="staff-name">👤 ${escapeHtml(name)}</span>
-        <button class="icon-btn" onclick="removeStaff('${escapeHtml(name)}')" title="削除">🗑</button>
+    list.innerHTML = STAFF_LIST.map((name, idx) => `
+      <div class="staff-item" data-idx="${idx}">
+        <span class="staff-name staff-name-display">👤 ${escapeHtml(name)}</span>
+        <input type="text" class="staff-name-edit" value="${escapeHtml(name)}" style="display:none;" onkeypress="if(event.key==='Enter') saveEditStaff(${idx})">
+        <div class="staff-item-actions">
+          <button class="icon-btn staff-btn-edit" onclick="startEditStaff(${idx})" title="編集">✏️</button>
+          <button class="icon-btn staff-btn-save" onclick="saveEditStaff(${idx})" title="保存" style="display:none;">✓</button>
+          <button class="icon-btn staff-btn-cancel" onclick="cancelEditStaff(${idx})" title="キャンセル" style="display:none;">×</button>
+          <button class="icon-btn staff-btn-remove" onclick="removeStaff('${escapeHtml(name)}')" title="削除">🗑</button>
+        </div>
       </div>
     `).join('');
+  }
+  
+  function startEditStaff(idx) {
+    const item = document.querySelector(`#staffList .staff-item[data-idx="${idx}"]`);
+    if (!item) return;
+    item.querySelector('.staff-name-display').style.display = 'none';
+    item.querySelector('.staff-name-edit').style.display = 'block';
+    item.querySelector('.staff-btn-edit').style.display = 'none';
+    item.querySelector('.staff-btn-remove').style.display = 'none';
+    item.querySelector('.staff-btn-save').style.display = 'inline-block';
+    item.querySelector('.staff-btn-cancel').style.display = 'inline-block';
+    const input = item.querySelector('.staff-name-edit');
+    input.focus();
+    input.select();
+  }
+  
+  function cancelEditStaff(idx) {
+    renderStaffList();
+  }
+  
+  async function saveEditStaff(idx) {
+    const item = document.querySelector(`#staffList .staff-item[data-idx="${idx}"]`);
+    if (!item) return;
+    const newName = item.querySelector('.staff-name-edit').value.trim();
+    if (!newName) {
+      showStaffSaveStatus('名前は空にできません', 'error');
+      return;
+    }
+    // 重複チェック（自分以外と被ってないか）
+    const oldName = STAFF_LIST[idx];
+    if (newName !== oldName && STAFF_LIST.includes(newName)) {
+      showStaffSaveStatus('既に同じ名前が登録されています', 'error');
+      return;
+    }
+    if (newName === oldName) {
+      renderStaffList();
+      return;
+    }
+    STAFF_LIST[idx] = newName;
+    await saveStaffList();
+    renderStaffList();
+    updateStaffSelect();
+    STAFF_DIRTY = true;
+    updateStaffUnsavedHint();
+    showStaffSaveStatus(`「${oldName}」→「${newName}」に変更しました。保存ボタンを押すと全PCに同期されます`, 'success');
   }
   
   function updateStaffSelect() {
@@ -2329,12 +2400,62 @@
       list.innerHTML = '<div class="staff-empty">まだ対応が登録されていません。<br>上の入力欄から追加してください。<br>例：返品、キャンセル、再送、交換、返金</div>';
       return;
     }
-    list.innerHTML = ACTION_LIST.map(name => `
-      <div class="staff-item">
-        <span class="staff-name">📋 ${escapeHtml(name)}</span>
-        <button class="icon-btn" onclick="removeAction('${escapeHtml(name)}')" title="削除">🗑</button>
+    list.innerHTML = ACTION_LIST.map((name, idx) => `
+      <div class="staff-item" data-idx="${idx}">
+        <span class="staff-name action-name-display">📋 ${escapeHtml(name)}</span>
+        <input type="text" class="action-name-edit" value="${escapeHtml(name)}" style="display:none;" onkeypress="if(event.key==='Enter') saveEditAction(${idx})">
+        <div class="staff-item-actions">
+          <button class="icon-btn action-btn-edit" onclick="startEditAction(${idx})" title="編集">✏️</button>
+          <button class="icon-btn action-btn-save" onclick="saveEditAction(${idx})" title="保存" style="display:none;">✓</button>
+          <button class="icon-btn action-btn-cancel" onclick="cancelEditAction(${idx})" title="キャンセル" style="display:none;">×</button>
+          <button class="icon-btn action-btn-remove" onclick="removeAction('${escapeHtml(name)}')" title="削除">🗑</button>
+        </div>
       </div>
     `).join('');
+  }
+  
+  function startEditAction(idx) {
+    const item = document.querySelector(`#actionList .staff-item[data-idx="${idx}"]`);
+    if (!item) return;
+    item.querySelector('.action-name-display').style.display = 'none';
+    item.querySelector('.action-name-edit').style.display = 'block';
+    item.querySelector('.action-btn-edit').style.display = 'none';
+    item.querySelector('.action-btn-remove').style.display = 'none';
+    item.querySelector('.action-btn-save').style.display = 'inline-block';
+    item.querySelector('.action-btn-cancel').style.display = 'inline-block';
+    const input = item.querySelector('.action-name-edit');
+    input.focus();
+    input.select();
+  }
+  
+  function cancelEditAction(idx) {
+    renderActionList();
+  }
+  
+  async function saveEditAction(idx) {
+    const item = document.querySelector(`#actionList .staff-item[data-idx="${idx}"]`);
+    if (!item) return;
+    const newName = item.querySelector('.action-name-edit').value.trim();
+    if (!newName) {
+      showActionSaveStatus('対応名は空にできません', 'error');
+      return;
+    }
+    const oldName = ACTION_LIST[idx];
+    if (newName !== oldName && ACTION_LIST.includes(newName)) {
+      showActionSaveStatus('既に同じ対応が登録されています', 'error');
+      return;
+    }
+    if (newName === oldName) {
+      renderActionList();
+      return;
+    }
+    ACTION_LIST[idx] = newName;
+    await saveActionList();
+    renderActionList();
+    updateActionSelect();
+    ACTION_DIRTY = true;
+    updateActionUnsavedHint();
+    showActionSaveStatus(`「${oldName}」→「${newName}」に変更しました。保存ボタンを押すと全PCに同期されます`, 'success');
   }
   
   function updateActionSelect() {
