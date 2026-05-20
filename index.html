@@ -738,19 +738,19 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v1.9</span>
+        <span class="logo-version">v2.0</span>
       </div>
     </div>
     <div class="stats">
       <div class="stat-item">📚 履歴 <strong id="statHistory">0</strong></div>
-      <div class="stat-item">⭐ お手本 <strong id="statStarred">0</strong></div>
+      <div class="stat-item">⭐ スター付き <strong id="statStarred">0</strong></div>
       <div class="sync-status disconnected" id="syncStatus">
         <span class="sync-dot"></span>
         <span id="syncStatusText">未接続</span>
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn">🔄 同期</button>
+      <button class="btn btn-secondary btn-sm" onclick="manualSync()" id="syncBtn" title="他のスタッフの最新履歴を取りに行きます">🔄 同期</button>
       <button class="btn btn-secondary btn-sm" onclick="openStaffModal()">👤 担当者</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('history')">📚 履歴</button>
       <button class="btn btn-secondary btn-sm" onclick="openModal('settings')">⚙ 設定</button>
@@ -1001,7 +1001,7 @@
           </select>
           <select id="filterStar" onchange="renderHistory()">
             <option value="">すべて</option>
-            <option value="starred">⭐ お手本のみ</option>
+            <option value="starred">⭐ スター付きのみ</option>
           </select>
         </div>
         <div class="history-list" id="historyList"></div>
@@ -1724,7 +1724,7 @@
               <span class="preview">${escapeHtml(preview)}...</span>
             </div>
             <div class="history-actions" onclick="event.stopPropagation()">
-              <button class="icon-btn ${item.starred ? 'starred' : ''}" onclick="toggleStar('${item.id}', ${!item.starred})" title="お手本にする">
+              <button class="icon-btn ${item.starred ? 'starred' : ''}" onclick="toggleStar('${item.id}', ${!item.starred})" title="スターをつける/外す">
                 ${item.starred ? '⭐' : '☆'}
               </button>
               <button class="icon-btn" onclick="useAsTemplate('${item.id}')" title="再利用">📋</button>
@@ -2160,11 +2160,11 @@
       `;
     }
     
-    // ⭐お手本
+    // ⭐スター付き履歴
     if (ref.starred && ref.starred.length > 0) {
       sectionsHtml += `
         <section>
-          <h2>⭐ お手本 <span class="count">${ref.starred.length}件</span></h2>
+          <h2>⭐ スター付き履歴 <span class="count">${ref.starred.length}件</span></h2>
           <div class="cards">
             ${ref.starred.map((ex, i) => `
               <div class="card star-card">
@@ -2654,7 +2654,7 @@ ${customerEmail}
       
       const refInfoEl = document.getElementById('refInfo');
       const refParts = [];
-      if (relevant.starred.length > 0) refParts.push(`⭐お手本 ${relevant.starred.length}件`);
+      if (relevant.starred.length > 0) refParts.push(`⭐スター付き ${relevant.starred.length}件`);
       if (relevant.sameCategory.length > 0) refParts.push(`同カテゴリ「${escapeHtml(categoryInfo.category)}」${relevant.sameCategory.length}件`);
       if (relevant.cases && relevant.cases.length > 0) refParts.push(`💼過去事例 ${relevant.cases.length}件`);
       if (relevant.templates.length > 0) refParts.push(`📘テンプレ ${relevant.templates.length}件`);
@@ -2687,9 +2687,9 @@ ${customerEmail}
         ).join('\n\n---\n\n');
       }
       if (relevant.starred.length > 0) {
-        examplesText += '\n\n## ⭐お手本にすべき返信例（特に重視・トーンを真似る）\n';
+        examplesText += '\n\n## ⭐スター付き履歴（特に重視・トーンを真似る）\n';
         examplesText += relevant.starred.map((ex, i) => 
-          `### お手本${i+1}（カテゴリ: ${ex.category || '不明'}）\n[お客様メール]\n${ex.customerEmail}\n\n[送った返信]\n${ex.reply}`
+          `### スター${i+1}（カテゴリ: ${ex.category || '不明'}）\n[お客様メール]\n${ex.customerEmail}\n\n[送った返信]\n${ex.reply}`
         ).join('\n\n---\n\n');
       }
       if (relevant.sameCategory.length > 0) {
@@ -2723,7 +2723,7 @@ ${customerEmail}
 - 感情: ${categoryInfo.mood}
 - 要約: ${categoryInfo.summary}
 
-${examplesText ? '## 過去の返信パターン\n以下の過去返信のトーン・構成・言い回しを学習して、今回のメールに合わせた返信を作成してください。お手本のスタイルを踏襲することが特に重要です。テンプレートの中に出てくる担当者名（佐藤・鈴木・吉田・高橋など）は無視して、必ず「${staffName}」を使ってください。署名・締めの言葉もテンプレートに合わせてください。' + examplesText : ''}
+${examplesText ? '## 過去の返信パターン\n以下の過去返信のトーン・構成・言い回しを学習して、今回のメールに合わせた返信を作成してください。テンプレートの中に出てくる担当者名（佐藤・鈴木・吉田・高橋など）は無視して、必ず「${staffName}」を使ってください。署名・締めの言葉もテンプレートに合わせてください。' + examplesText : ''}
 
 ${instructions ? '## 店主からの追加指示\n' + instructions : ''}
 
