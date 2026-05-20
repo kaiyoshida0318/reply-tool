@@ -663,6 +663,8 @@
           </p>
         </div>
         
+        <div id="aiTestResult" class="status-bar" style="margin-bottom: 12px;"></div>
+        
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
           <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
           <button class="btn btn-secondary" onclick="testAnthropic()">🔍 接続テスト</button>
@@ -1003,22 +1005,36 @@
   async function saveAnthropicKey() {
     const key = document.getElementById('anthropicKey').value.trim();
     if (!key) {
-      showStatus('APIキーを入力してください', 'error');
+      showAITestResult('APIキーを入力してください', 'error');
       return;
     }
     await localSet('anthropic:key', key);
     ANTHROPIC_KEY = key;
-    showStatus('✓ APIキーを保存しました', 'success');
-    closeModal();
+    showAITestResult('✓ APIキーを保存しました', 'success');
+    setTimeout(() => closeModal(), 1500);
+  }
+  
+  function showAITestResult(msg, type) {
+    const el = document.getElementById('aiTestResult');
+    el.className = 'status-bar show status-' + type;
+    if (type === 'loading') {
+      el.innerHTML = `<div class="spinner"></div> ${msg}`;
+    } else {
+      el.innerHTML = msg;
+    }
   }
   
   async function testAnthropic() {
     const key = document.getElementById('anthropicKey').value.trim();
     if (!key) {
-      showStatus('APIキーを入力してください', 'error');
+      showAITestResult('APIキーを入力してください', 'error');
       return;
     }
-    showStatus('接続テスト中...', 'loading');
+    if (!key.startsWith('sk-ant-')) {
+      showAITestResult('⚠️ APIキーは「sk-ant-」で始まるはずです。形式が違うようです', 'error');
+      return;
+    }
+    showAITestResult('接続テスト中...', 'loading');
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -1036,11 +1052,16 @@
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(`${res.status}: ${errData.error?.message || res.statusText}`);
+        const errMsg = errData.error?.message || res.statusText;
+        let hint = '';
+        if (res.status === 401) hint = '<br><small>→ APIキーが無効です。Anthropic Consoleから新しいキーを発行してみてください。</small>';
+        else if (res.status === 402 || (errMsg && errMsg.includes('credit'))) hint = '<br><small>→ クレジット残高不足です。Console → Billing で残高を確認してください。</small>';
+        else if (res.status === 429) hint = '<br><small>→ レート制限に達しました。少し待ってから再試行してください。</small>';
+        throw new Error(`${res.status}: ${errMsg}${hint}`);
       }
-      showStatus('✓ 接続成功！ APIキーは有効です', 'success');
+      showAITestResult('✓ 接続成功！APIキーは有効です。「APIキーを保存」を押して保存してください。', 'success');
     } catch(e) {
-      showStatus('✗ 接続失敗: ' + e.message, 'error');
+      showAITestResult('✗ 接続失敗<br>' + e.message, 'error');
     }
   }
   
