@@ -473,6 +473,124 @@
     text-align: center;
   }
   
+  /* 今日の保存一覧 */
+  .today-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .today-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .today-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .today-title-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .today-count {
+    font-size: 12px;
+    color: var(--text-soft);
+    background: #f0ece4;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+  .today-unsent-badge {
+    font-size: 12px;
+    color: #8a6c0e;
+    background: #fbf2d4;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .today-actions { display: flex; gap: 8px; }
+  
+  .today-list {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .today-list::-webkit-scrollbar { height: 8px; }
+  .today-list::-webkit-scrollbar-track { background: #f5f3ee; border-radius: 4px; }
+  .today-list::-webkit-scrollbar-thumb { background: #d4ccbf; border-radius: 4px; }
+  
+  .today-card {
+    flex: 0 0 280px;
+    min-width: 280px;
+    max-width: 280px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    background: #fefdfb;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .today-card.unsent {
+    border-color: var(--accent);
+    background: #fff7f3;
+  }
+  .today-card.sent {
+    opacity: 0.6;
+    background: #f5f3ee;
+  }
+  .today-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+  }
+  .today-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-soft);
+    flex-wrap: wrap;
+  }
+  .today-card-status {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .today-card-status.unsent { background: var(--accent); color: white; }
+  .today-card-status.sent { background: #c0bdb6; color: white; }
+  .today-card-status.error { background: #b04632; color: white; }
+  .today-card-actions { display: flex; gap: 4px; }
+  .today-card-actions .icon-btn { padding: 3px 6px; font-size: 12px; }
+  .today-card-preview {
+    font-size: 12px;
+    color: var(--text);
+    background: white;
+    padding: 8px;
+    border-radius: 4px;
+    max-height: 80px;
+    overflow: hidden;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    border: 1px solid #ebe9e3;
+  }
+  .today-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-soft);
+    font-size: 13px;
+    font-style: italic;
+  }
+  
   .ref-info {
     background: #f0f6fb;
     border: 1px solid #c8dbed;
@@ -540,7 +658,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v1.1</span>
+        <span class="logo-version">v1.2</span>
       </div>
     </div>
     <div class="stats">
@@ -594,17 +712,40 @@
           <button class="btn btn-secondary btn-sm" onclick="regenerateReply()" id="regenBtn" disabled>
             🔄 再生成
           </button>
-          <button class="btn btn-success" onclick="copyAndSave()" id="copyBtn" disabled>
-            📋 OK・コピー（履歴に保存）
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="copyOnly()" id="copyOnlyBtn" disabled>
+              📋 コピーのみ
+            </button>
+            <button class="btn btn-success" onclick="copyAndSave()" id="copyBtn" disabled>
+              💾 OK・コピー（履歴に保存）
+            </button>
+          </div>
         </div>
       </div>
     </div>
     
   </div>
   
+  <!-- 今日の保存一覧 -->
+  <div class="today-section" id="todaySection" style="display: none;">
+    <div class="today-header">
+      <div class="today-title">
+        <span class="today-title-text">📝 今日の保存一覧</span>
+        <span class="today-count" id="todayCount">0件</span>
+        <span class="today-unsent-badge" id="todayUnsentBadge" style="display: none;">未送信 <strong id="todayUnsentCount">0</strong>件</span>
+      </div>
+      <div class="today-actions">
+        <button class="btn btn-secondary btn-sm" onclick="clearTodayAll()" id="clearTodayBtn">🗑 今日の保存をクリア</button>
+        <button class="btn btn-primary btn-sm" onclick="uploadBatch()" id="uploadBatchBtn" disabled>
+          ☁️ まとめてアップロード
+        </button>
+      </div>
+    </div>
+    <div class="today-list" id="todayList"></div>
+  </div>
+  
   <div class="footer-note">
-    💡 OKボタンで自動的にGitHubに保存され、全員のツールに同期されます。
+    💡 「コピーのみ」は履歴に保存しません。「OK・コピー（履歴に保存）」を押すと下の一覧に追加され、まとめてアップロードできます。
   </div>
   
 </div>
@@ -1318,6 +1459,7 @@
     if (!item) return;
     document.getElementById('aiReply').value = item.reply || '';
     document.getElementById('copyBtn').disabled = false;
+    document.getElementById('copyOnlyBtn').disabled = false;
     closeModal();
     showStatus('✓ 過去の返信を読み込みました', 'success');
   }
@@ -1333,6 +1475,7 @@
     document.getElementById('badges').innerHTML = '';
     document.getElementById('refInfo').classList.remove('show');
     document.getElementById('copyBtn').disabled = true;
+    document.getElementById('copyOnlyBtn').disabled = true;
     document.getElementById('regenBtn').disabled = true;
   }
   
@@ -1355,10 +1498,207 @@
   
   let lastGenerated = null;
   let ANTHROPIC_KEY = '';
+  let TODAY_ITEMS = []; // 今日の保存一覧（ローカル）
   
   async function loadAnthropicKey() {
     ANTHROPIC_KEY = await localGet('anthropic:key') || '';
     return !!ANTHROPIC_KEY;
+  }
+  
+  // 今日の保存一覧のロード（今日の日付のもののみ）
+  async function loadTodayItems() {
+    try {
+      const raw = await localGet('today:items');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const today = new Date().toDateString();
+        // 今日のものだけフィルタ（日が変わったら自動でクリア）
+        TODAY_ITEMS = parsed.filter(item => {
+          return new Date(item.timestamp).toDateString() === today;
+        });
+        // 古いものは消す
+        if (TODAY_ITEMS.length !== parsed.length) {
+          await saveTodayItems();
+        }
+      }
+    } catch(e) { TODAY_ITEMS = []; }
+  }
+  
+  async function saveTodayItems() {
+    try {
+      await localSet('today:items', JSON.stringify(TODAY_ITEMS));
+    } catch(e) {}
+  }
+  
+  function renderTodayList() {
+    const section = document.getElementById('todaySection');
+    const list = document.getElementById('todayList');
+    const countEl = document.getElementById('todayCount');
+    const unsentBadge = document.getElementById('todayUnsentBadge');
+    const unsentCountEl = document.getElementById('todayUnsentCount');
+    const uploadBtn = document.getElementById('uploadBatchBtn');
+    
+    if (TODAY_ITEMS.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    
+    const unsentCount = TODAY_ITEMS.filter(i => !i.uploaded).length;
+    countEl.textContent = `${TODAY_ITEMS.length}件`;
+    
+    if (unsentCount > 0) {
+      unsentBadge.style.display = 'inline-block';
+      unsentCountEl.textContent = unsentCount;
+      uploadBtn.disabled = false;
+    } else {
+      unsentBadge.style.display = 'none';
+      uploadBtn.disabled = true;
+    }
+    
+    // 新しい順に表示
+    const sorted = [...TODAY_ITEMS].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    list.innerHTML = sorted.map(item => {
+      const time = formatTime(item.timestamp);
+      const cat = item.category ? `<span class="badge badge-category" style="font-size:10px;padding:2px 6px;">${escapeHtml(item.category)}</span>` : '';
+      let status, statusCls, cardCls;
+      if (item.uploaded) {
+        status = '✓ 送信済';
+        statusCls = 'sent';
+        cardCls = 'sent';
+      } else if (item.uploadError) {
+        status = '× 失敗';
+        statusCls = 'error';
+        cardCls = 'unsent';
+      } else {
+        status = '未送信';
+        statusCls = 'unsent';
+        cardCls = 'unsent';
+      }
+      const preview = (item.reply || '').substring(0, 150);
+      return `
+        <div class="today-card ${cardCls}">
+          <div class="today-card-header">
+            <div class="today-card-meta">
+              ${cat}
+              <span>${time}</span>
+              <span class="today-card-status ${statusCls}">${status}</span>
+            </div>
+            <div class="today-card-actions">
+              <button class="icon-btn" onclick="copyTodayItem('${item.id}')" title="コピー">📋</button>
+              <button class="icon-btn" onclick="removeTodayItem('${item.id}')" title="削除">🗑</button>
+            </div>
+          </div>
+          <div class="today-card-preview">${escapeHtml(preview)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function formatTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  
+  async function copyTodayItem(id) {
+    const item = TODAY_ITEMS.find(i => i.id === id);
+    if (!item) return;
+    try {
+      await navigator.clipboard.writeText(item.reply);
+      showStatus('✓ クリップボードにコピーしました', 'success');
+    } catch(e) {}
+  }
+  
+  async function removeTodayItem(id) {
+    if (!confirm('この項目を一覧から削除しますか？')) return;
+    TODAY_ITEMS = TODAY_ITEMS.filter(i => i.id !== id);
+    await saveTodayItems();
+    renderTodayList();
+  }
+  
+  async function clearTodayAll() {
+    const unsent = TODAY_ITEMS.filter(i => !i.uploaded).length;
+    let msg = '今日の保存一覧をすべてクリアしますか？';
+    if (unsent > 0) {
+      msg += `\n\n⚠️ 未送信が${unsent}件あります。本当にクリアしますか？`;
+    }
+    if (!confirm(msg)) return;
+    TODAY_ITEMS = [];
+    await saveTodayItems();
+    renderTodayList();
+  }
+  
+  async function uploadBatch() {
+    const unsent = TODAY_ITEMS.filter(i => !i.uploaded);
+    if (unsent.length === 0) return;
+    
+    if (!GH.connected) {
+      // 再接続を試みる
+      const ok = await syncFromGitHub();
+      if (!ok) {
+        showStatus('GitHubに接続できません。⚙ 設定で確認してください', 'error');
+        return;
+      }
+    }
+    
+    const btn = document.getElementById('uploadBatchBtn');
+    btn.disabled = true;
+    showStatus(`${unsent.length}件をアップロード中...`, 'loading');
+    
+    try {
+      // 最新の履歴をGitHubから取得
+      const result = await ghGetFile(GH.historyPath);
+      if (result.content) {
+        HISTORY = JSON.parse(result.content);
+        GH.historySha = result.sha;
+      }
+      
+      // 未送信分を履歴に追加
+      for (const item of unsent) {
+        HISTORY.unshift({
+          id: item.id,
+          customerEmail: item.customerEmail,
+          reply: item.reply,
+          category: item.category,
+          mood: item.mood,
+          summary: item.summary,
+          extraNotes: item.extraNotes,
+          author: item.author,
+          timestamp: item.timestamp,
+          starred: false
+        });
+      }
+      
+      // GitHubへ送信
+      await pushHistoryToGitHub();
+      
+      // 送信成功 → uploadedフラグを立てる
+      const today = new Date().toDateString();
+      TODAY_ITEMS.forEach(item => {
+        if (!item.uploaded && new Date(item.timestamp).toDateString() === today) {
+          item.uploaded = true;
+          item.uploadError = false;
+        }
+      });
+      await saveTodayItems();
+      updateStats();
+      renderTodayList();
+      
+      showStatus(`✓ ${unsent.length}件をGitHubにアップロードしました`, 'success');
+    } catch(e) {
+      console.error(e);
+      // 失敗フラグを立てる
+      TODAY_ITEMS.forEach(item => {
+        if (!item.uploaded) item.uploadError = true;
+      });
+      await saveTodayItems();
+      renderTodayList();
+      showStatus('アップロード失敗: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
   }
   
   function findRelevantHistory(category) {
@@ -1392,6 +1732,7 @@
     
     document.getElementById('generateBtn').disabled = true;
     document.getElementById('copyBtn').disabled = true;
+    document.getElementById('copyOnlyBtn').disabled = true;
     document.getElementById('regenBtn').disabled = true;
     document.getElementById('aiReply').value = '';
     document.getElementById('refInfo').classList.remove('show');
@@ -1551,6 +1892,7 @@ ${customerEmail}
       
       showStatus('✓ 返信を生成しました。編集してOKボタンで送信＆保存', 'success');
       document.getElementById('copyBtn').disabled = false;
+      document.getElementById('copyOnlyBtn').disabled = false;
       document.getElementById('regenBtn').disabled = false;
       
     } catch (err) {
@@ -1563,6 +1905,19 @@ ${customerEmail}
   
   function regenerateReply() {
     generateReply();
+  }
+  
+  async function copyOnly() {
+    const text = document.getElementById('aiReply').value.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch(e) {
+      const ta = document.getElementById('aiReply');
+      ta.select();
+      document.execCommand('copy');
+    }
+    showStatus('✓ クリップボードにコピーしました（履歴には保存されません）', 'success');
   }
   
   async function copyAndSave() {
@@ -1580,19 +1935,22 @@ ${customerEmail}
     if (lastGenerated) {
       const userName = await localGet('user:name') || '匿名';
       const item = {
+        id: generateId(),
         ...lastGenerated,
         reply: text,
         author: userName,
-        starred: false
+        starred: false,
+        timestamp: Date.now(),
+        uploaded: false,
+        uploadError: false
       };
       
-      try {
-        await addHistoryItem(item);
-        const syncMsg = GH.connected ? 'GitHubに保存' : 'ローカルに保存';
-        showStatus(`✓ コピー完了・${syncMsg}（カテゴリ: ${lastGenerated.category}）`, 'success');
-      } catch(e) {
-        showStatus('保存エラー: ' + e.message, 'error');
-      }
+      // 今日の一覧に追加
+      TODAY_ITEMS.unshift(item);
+      await saveTodayItems();
+      renderTodayList();
+      
+      showStatus(`✓ コピー完了・今日の一覧に保存しました（カテゴリ: ${lastGenerated.category}）`, 'success');
       lastGenerated = null;
     } else {
       showStatus('✓ コピーしました', 'success');
@@ -1631,6 +1989,7 @@ ${customerEmail}
   
   async function init() {
     await loadAnthropicKey();
+    await loadTodayItems();
     const hasConfig = await loadGitHubConfig();
     
     if (hasConfig) {
@@ -1650,6 +2009,7 @@ ${customerEmail}
       setSyncStatus('local', 'ローカルのみ');
     }
     updateStats();
+    renderTodayList();
   }
   
   init();
