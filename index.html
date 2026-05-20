@@ -738,7 +738,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.0</span>
+        <span class="logo-version">v2.1</span>
       </div>
     </div>
     <div class="stats">
@@ -1072,8 +1072,10 @@
     branch: 'main',
     historyPath: 'data/history.json',
     settingsPath: 'data/settings.json',
+    staffPath: 'data/staff.json',
     historySha: null,
     settingsSha: null,
+    staffSha: null,
     connected: false
   };
   
@@ -1216,6 +1218,33 @@
         GH.settingsSha = null;
       }
       
+      // 担当者リストの取得
+      const staffResult = await ghGetFile(GH.staffPath);
+      if (staffResult.content) {
+        try {
+          STAFF_LIST = JSON.parse(staffResult.content);
+          GH.staffSha = staffResult.sha;
+        } catch(e) { STAFF_LIST = []; }
+      } else {
+        // GitHubに担当者リストファイルが無い場合
+        GH.staffSha = null;
+        // 既にローカルに担当者がいれば、初回アップロード
+        if (STAFF_LIST.length > 0) {
+          try {
+            await pushStaffToGitHub();
+          } catch(e) { /* 失敗してもよい */ }
+        }
+      }
+      // ローカルにも保存
+      await localSet('staff:list', JSON.stringify(STAFF_LIST));
+      // ドロップダウンを更新
+      updateStaffSelect();
+      // 担当者管理モーダルが開いていればリスト再描画
+      const staffModal = document.getElementById('staffModal');
+      if (staffModal && staffModal.classList.contains('show')) {
+        renderStaffList();
+      }
+      
       GH.connected = true;
       setSyncStatus('connected', '接続中');
       updateStats();
@@ -1273,8 +1302,40 @@
         if (e.conflict && attempt < 2) {
           const result = await ghGetFile(GH.settingsPath);
           if (result.content) {
-            // 設定は最新を取り込み（自分の変更で上書き）
             GH.settingsSha = result.sha;
+          }
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+  
+  async function pushStaffToGitHub() {
+    if (!GH.connected) return false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = JSON.stringify(STAFF_LIST, null, 2);
+        const newSha = await ghPutFile(GH.staffPath, content, GH.staffSha, `担当者リスト更新 (${STAFF_LIST.length}人)`);
+        GH.staffSha = newSha;
+        return true;
+      } catch(e) {
+        if (e.conflict && attempt < 2) {
+          // 競合時は最新を取得してマージ
+          const result = await ghGetFile(GH.staffPath);
+          if (result.content) {
+            try {
+              const remoteList = JSON.parse(result.content);
+              // 重複なしマージ
+              const merged = [...new Set([...remoteList, ...STAFF_LIST])];
+              STAFF_LIST = merged;
+              GH.staffSha = result.sha;
+              await localSet('staff:list', JSON.stringify(STAFF_LIST));
+              updateStaffSelect();
+            } catch(e2) {
+              GH.staffSha = result.sha;
+            }
           }
           continue;
         }
@@ -1856,6 +1917,17 @@
     renderStaffList();
     updateStaffSelect();
     input.focus();
+    // GitHubにも反映
+    if (GH.connected) {
+      try {
+        await pushStaffToGitHub();
+        showStatus('✓ 担当者を追加しました（全PCに同期されました）', 'success');
+      } catch(e) {
+        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
+      }
+    } else {
+      showStatus('✓ 担当者を追加しました（ローカルのみ）', 'success');
+    }
   }
   
   async function removeStaff(name) {
@@ -1864,6 +1936,17 @@
     await saveStaffList();
     renderStaffList();
     updateStaffSelect();
+    // GitHubにも反映
+    if (GH.connected) {
+      try {
+        await pushStaffToGitHub();
+        showStatus('✓ 担当者を削除しました（全PCに同期されました）', 'success');
+      } catch(e) {
+        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
+      }
+    } else {
+      showStatus('✓ 担当者を削除しました（ローカルのみ）', 'success');
+    }
   }
   
   function renderStaffList() {
