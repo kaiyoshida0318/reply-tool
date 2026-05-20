@@ -606,6 +606,7 @@
     </div>
     <div class="modal-tabs">
       <button class="modal-tab" data-tab="settings" onclick="switchTab('settings')">⚙ 基本設定</button>
+      <button class="modal-tab" data-tab="ai" onclick="switchTab('ai')">🤖 AI設定</button>
       <button class="modal-tab" data-tab="github" onclick="switchTab('github')">🔗 GitHub接続</button>
       <button class="modal-tab" data-tab="history" onclick="switchTab('history')">📚 履歴</button>
     </div>
@@ -636,6 +637,36 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
           <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
           <button class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+        </div>
+      </div>
+      
+      <div id="tab-ai" style="display:none;">
+        <div class="info-box">
+          <strong>🤖 AIエンジンについて</strong>
+          <p style="color: inherit; margin-top: 6px;">このツールは <strong>Anthropic Claude Haiku 4.5</strong> を使って返信を生成します。各PCでAPIキーの登録が必要です。<br>
+          ※ Claude Maxプランとは別契約・別請求です。</p>
+        </div>
+        
+        <div class="modal-section">
+          <h3>1. Anthropic APIキー</h3>
+          <p>取得先：<a href="https://console.anthropic.com/" target="_blank" style="color: var(--accent-deep);">console.anthropic.com</a> → API keys から発行<br>
+          ⚠️ このキーはこのブラウザ内にのみ保存されます。GitHubには送信されません。</p>
+          <input type="password" id="anthropicKey" placeholder="sk-ant-api03-xxxxxxxxxxxxx">
+        </div>
+        
+        <div class="modal-section">
+          <h3>料金の目安</h3>
+          <p style="line-height: 1.8;">
+          ・1件の返信生成あたり：<strong>約0.5円〜1円</strong><br>
+          ・1日30件の対応で：<strong>月600〜900円程度</strong><br>
+          ・モデル：Claude Haiku 4.5（$1/$5 per 100万トークン）
+          </p>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
+          <button class="btn btn-secondary" onclick="testAnthropic()">🔍 接続テスト</button>
+          <button class="btn btn-primary" onclick="saveAnthropicKey()">APIキーを保存</button>
         </div>
       </div>
       
@@ -948,11 +979,12 @@
   }
   function switchTab(tab) {
     document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    ['settings','github','history'].forEach(name => {
+    ['settings','ai','github','history'].forEach(name => {
       document.getElementById('tab-' + name).style.display = tab === name ? 'block' : 'none';
     });
     document.getElementById('modalTitle').textContent = 
       tab === 'settings' ? '設定' : 
+      tab === 'ai' ? 'AI設定' :
       tab === 'github' ? 'GitHub接続' : '返信履歴';
     if (tab === 'history') renderHistory();
   }
@@ -962,9 +994,54 @@
     document.getElementById('customInstructions').value = SETTINGS.instructions || '';
     document.getElementById('userName').value = await localGet('user:name') || '';
     document.getElementById('ghToken').value = GH.token;
+    document.getElementById('anthropicKey').value = ANTHROPIC_KEY;
     // リポジトリとブランチは、保存値があればそれを、なければHTMLのデフォルト値を維持
     if (GH.repo) document.getElementById('ghRepo').value = GH.repo;
     if (GH.branch) document.getElementById('ghBranch').value = GH.branch;
+  }
+  
+  async function saveAnthropicKey() {
+    const key = document.getElementById('anthropicKey').value.trim();
+    if (!key) {
+      showStatus('APIキーを入力してください', 'error');
+      return;
+    }
+    await localSet('anthropic:key', key);
+    ANTHROPIC_KEY = key;
+    showStatus('✓ APIキーを保存しました', 'success');
+    closeModal();
+  }
+  
+  async function testAnthropic() {
+    const key = document.getElementById('anthropicKey').value.trim();
+    if (!key) {
+      showStatus('APIキーを入力してください', 'error');
+      return;
+    }
+    showStatus('接続テスト中...', 'loading');
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 20,
+          messages: [{ role: "user", content: "say hello in japanese" }]
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`${res.status}: ${errData.error?.message || res.statusText}`);
+      }
+      showStatus('✓ 接続成功！ APIキーは有効です', 'success');
+    } catch(e) {
+      showStatus('✗ 接続失敗: ' + e.message, 'error');
+    }
   }
   
   async function saveSettings() {
@@ -1218,6 +1295,12 @@
   }
   
   let lastGenerated = null;
+  let ANTHROPIC_KEY = '';
+  
+  async function loadAnthropicKey() {
+    ANTHROPIC_KEY = await localGet('anthropic:key') || '';
+    return !!ANTHROPIC_KEY;
+  }
   
   function findRelevantHistory(category) {
     const starred = HISTORY.filter(i => i.starred);
@@ -1235,6 +1318,11 @@
     const customerEmail = document.getElementById('customerEmail').value.trim();
     if (!customerEmail) {
       showStatus('お客様のメールを貼り付けてください', 'error');
+      return;
+    }
+    
+    if (!ANTHROPIC_KEY) {
+      showStatus('Anthropic APIキーが未設定です。⚙設定 → AI設定 タブで登録してください', 'error');
       return;
     }
     
@@ -1272,9 +1360,14 @@ ${customerEmail}
       
       const catResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 200,
           messages: [{ role: "user", content: categoryPrompt }]
         })
@@ -1360,9 +1453,14 @@ ${customerEmail}
       
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 1500,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }]
@@ -1473,6 +1571,7 @@ ${customerEmail}
   // ========================================
   
   async function init() {
+    await loadAnthropicKey();
     const hasConfig = await loadGitHubConfig();
     
     if (hasConfig) {
