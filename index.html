@@ -745,7 +745,7 @@
       </div>
       <div class="logo-text-wrap">
         <span class="logo-reply">Reply</span><span class="logo-maker">Maker</span>
-        <span class="logo-version">v2.3</span>
+        <span class="logo-version">v2.4</span>
       </div>
     </div>
     <div class="stats">
@@ -883,9 +883,15 @@
         <h3>登録済み対応</h3>
         <div id="actionList" class="staff-list"></div>
       </div>
+      
+      <div id="actionSaveStatus" class="status-bar" style="margin-top: 12px;"></div>
     </div>
-    <div style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
-      <button class="btn btn-secondary" onclick="closeActionModal()">閉じる</button>
+    <div style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <span id="actionUnsavedHint" style="font-size: 12px; color: #c8553d; display: none;">⚠️ 未保存の変更があります</span>
+      <div style="display: flex; gap: 8px; margin-left: auto;">
+        <button class="btn btn-secondary" onclick="closeActionModal()">閉じる</button>
+        <button class="btn btn-primary" onclick="saveActionToGitHub()">💾 保存（全PCに同期）</button>
+      </div>
     </div>
   </div>
 </div>
@@ -915,9 +921,15 @@
         <h3>登録済み担当者</h3>
         <div id="staffList" class="staff-list"></div>
       </div>
+      
+      <div id="staffSaveStatus" class="status-bar" style="margin-top: 12px;"></div>
     </div>
-    <div style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
-      <button class="btn btn-secondary" onclick="closeStaffModal()">閉じる</button>
+    <div style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <span id="staffUnsavedHint" style="font-size: 12px; color: #c8553d; display: none;">⚠️ 未保存の変更があります</span>
+      <div style="display: flex; gap: 8px; margin-left: auto;">
+        <button class="btn btn-secondary" onclick="closeStaffModal()">閉じる</button>
+        <button class="btn btn-primary" onclick="saveStaffToGitHub()">💾 保存（全PCに同期）</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1970,6 +1982,8 @@
   let TODAY_ITEMS = []; // 今日の保存一覧（ローカル）
   let STAFF_LIST = []; // 担当者リスト
   let ACTION_LIST = []; // 対応リスト
+  let STAFF_DIRTY = false; // 担当者リストに未保存の変更があるか
+  let ACTION_DIRTY = false; // 対応リストに未保存の変更があるか
   let LAST_REFERENCES = null; // 最後に生成した時の参考データ
   
   async function loadAnthropicKey() {
@@ -1998,10 +2012,18 @@
     document.getElementById('staffModal').classList.add('show');
     document.getElementById('newStaffName').value = '';
     renderStaffList();
+    updateStaffUnsavedHint();
+    const status = document.getElementById('staffSaveStatus');
+    if (status) status.classList.remove('show');
     setTimeout(() => document.getElementById('newStaffName').focus(), 100);
   }
   
   function closeStaffModal() {
+    if (STAFF_DIRTY) {
+      if (!confirm('⚠️ 未保存の変更があります。\n保存せずに閉じると、他のPCには反映されません（このPCには保存されます）。\n本当に閉じますか？')) {
+        return;
+      }
+    }
     document.getElementById('staffModal').classList.remove('show');
   }
   
@@ -2010,7 +2032,7 @@
     const name = input.value.trim();
     if (!name) return;
     if (STAFF_LIST.includes(name)) {
-      showStatus('既に登録されている名前です', 'error');
+      showStaffSaveStatus('既に登録されている名前です', 'error');
       return;
     }
     STAFF_LIST.push(name);
@@ -2019,17 +2041,9 @@
     renderStaffList();
     updateStaffSelect();
     input.focus();
-    // GitHubにも反映
-    if (GH.connected) {
-      try {
-        await pushStaffToGitHub();
-        showStatus('✓ 担当者を追加しました（全PCに同期されました）', 'success');
-      } catch(e) {
-        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
-      }
-    } else {
-      showStatus('✓ 担当者を追加しました（ローカルのみ）', 'success');
-    }
+    STAFF_DIRTY = true;
+    updateStaffUnsavedHint();
+    showStaffSaveStatus(`「${name}」を追加しました。保存ボタンを押すと全PCに同期されます`, 'success');
   }
   
   async function removeStaff(name) {
@@ -2038,16 +2052,47 @@
     await saveStaffList();
     renderStaffList();
     updateStaffSelect();
-    // GitHubにも反映
-    if (GH.connected) {
-      try {
-        await pushStaffToGitHub();
-        showStatus('✓ 担当者を削除しました（全PCに同期されました）', 'success');
-      } catch(e) {
-        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
-      }
+    STAFF_DIRTY = true;
+    updateStaffUnsavedHint();
+    showStaffSaveStatus(`「${name}」を削除しました。保存ボタンを押すと全PCに同期されます`, 'success');
+  }
+  
+  function showStaffSaveStatus(msg, type) {
+    const el = document.getElementById('staffSaveStatus');
+    if (!el) return;
+    el.className = 'status-bar show status-' + type;
+    if (type === 'loading') {
+      el.innerHTML = `<div class="spinner"></div> ${msg}`;
     } else {
-      showStatus('✓ 担当者を削除しました（ローカルのみ）', 'success');
+      el.innerHTML = msg;
+    }
+  }
+  
+  function updateStaffUnsavedHint() {
+    const hint = document.getElementById('staffUnsavedHint');
+    if (hint) hint.style.display = STAFF_DIRTY ? 'inline' : 'none';
+  }
+  
+  async function saveStaffToGitHub() {
+    if (!STAFF_DIRTY) {
+      showStaffSaveStatus('変更はありません', 'success');
+      return;
+    }
+    if (!GH.connected) {
+      showStaffSaveStatus('✓ ローカルに保存しました（GitHub未接続のため同期されません）', 'success');
+      STAFF_DIRTY = false;
+      updateStaffUnsavedHint();
+      return;
+    }
+    showStaffSaveStatus('GitHubに保存中...', 'loading');
+    try {
+      await pushStaffToGitHub();
+      STAFF_DIRTY = false;
+      updateStaffUnsavedHint();
+      showStaffSaveStatus('✓ 保存しました（全PCに同期されました）', 'success');
+      setTimeout(() => closeStaffModal(), 1200);
+    } catch(e) {
+      showStaffSaveStatus('保存失敗: ' + e.message, 'error');
     }
   }
   
@@ -2119,10 +2164,18 @@
     document.getElementById('actionModal').classList.add('show');
     document.getElementById('newActionName').value = '';
     renderActionList();
+    updateActionUnsavedHint();
+    const status = document.getElementById('actionSaveStatus');
+    if (status) status.classList.remove('show');
     setTimeout(() => document.getElementById('newActionName').focus(), 100);
   }
   
   function closeActionModal() {
+    if (ACTION_DIRTY) {
+      if (!confirm('⚠️ 未保存の変更があります。\n保存せずに閉じると、他のPCには反映されません（このPCには保存されます）。\n本当に閉じますか？')) {
+        return;
+      }
+    }
     document.getElementById('actionModal').classList.remove('show');
   }
   
@@ -2131,7 +2184,7 @@
     const name = input.value.trim();
     if (!name) return;
     if (ACTION_LIST.includes(name)) {
-      showStatus('既に登録されている対応です', 'error');
+      showActionSaveStatus('既に登録されている対応です', 'error');
       return;
     }
     ACTION_LIST.push(name);
@@ -2140,16 +2193,9 @@
     renderActionList();
     updateActionSelect();
     input.focus();
-    if (GH.connected) {
-      try {
-        await pushActionToGitHub();
-        showStatus('✓ 対応を追加しました（全PCに同期されました）', 'success');
-      } catch(e) {
-        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
-      }
-    } else {
-      showStatus('✓ 対応を追加しました（ローカルのみ）', 'success');
-    }
+    ACTION_DIRTY = true;
+    updateActionUnsavedHint();
+    showActionSaveStatus(`「${name}」を追加しました。保存ボタンを押すと全PCに同期されます`, 'success');
   }
   
   async function removeAction(name) {
@@ -2158,15 +2204,47 @@
     await saveActionList();
     renderActionList();
     updateActionSelect();
-    if (GH.connected) {
-      try {
-        await pushActionToGitHub();
-        showStatus('✓ 対応を削除しました（全PCに同期されました）', 'success');
-      } catch(e) {
-        showStatus('GitHub同期エラー（ローカル保存はされています）: ' + e.message, 'error');
-      }
+    ACTION_DIRTY = true;
+    updateActionUnsavedHint();
+    showActionSaveStatus(`「${name}」を削除しました。保存ボタンを押すと全PCに同期されます`, 'success');
+  }
+  
+  function showActionSaveStatus(msg, type) {
+    const el = document.getElementById('actionSaveStatus');
+    if (!el) return;
+    el.className = 'status-bar show status-' + type;
+    if (type === 'loading') {
+      el.innerHTML = `<div class="spinner"></div> ${msg}`;
     } else {
-      showStatus('✓ 対応を削除しました（ローカルのみ）', 'success');
+      el.innerHTML = msg;
+    }
+  }
+  
+  function updateActionUnsavedHint() {
+    const hint = document.getElementById('actionUnsavedHint');
+    if (hint) hint.style.display = ACTION_DIRTY ? 'inline' : 'none';
+  }
+  
+  async function saveActionToGitHub() {
+    if (!ACTION_DIRTY) {
+      showActionSaveStatus('変更はありません', 'success');
+      return;
+    }
+    if (!GH.connected) {
+      showActionSaveStatus('✓ ローカルに保存しました（GitHub未接続のため同期されません）', 'success');
+      ACTION_DIRTY = false;
+      updateActionUnsavedHint();
+      return;
+    }
+    showActionSaveStatus('GitHubに保存中...', 'loading');
+    try {
+      await pushActionToGitHub();
+      ACTION_DIRTY = false;
+      updateActionUnsavedHint();
+      showActionSaveStatus('✓ 保存しました（全PCに同期されました）', 'success');
+      setTimeout(() => closeActionModal(), 1200);
+    } catch(e) {
+      showActionSaveStatus('保存失敗: ' + e.message, 'error');
     }
   }
   
